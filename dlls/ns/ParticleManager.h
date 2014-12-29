@@ -1,42 +1,25 @@
-/* AMX Mod X 
- *   Natural Selection Module 
- * 
- * by the AMX Mod X Development Team 
- *
- * This file is part of AMX Mod X. 
- * 
- * 
- *  This program is free software; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at 
- *  your option) any later version. 
- * 
- *  This program is distributed in the hope that it will be useful, but 
- *  WITHOUT ANY WARRANTY; without even the implied warranty of 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- *  General Public License for more details. 
- * 
- *  You should have received a copy of the GNU General Public License 
- *  along with this program; if not, write to the Free Software Foundation, 
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA 
- * 
- *  In addition, as a special exception, the author gives permission to 
- *  link the code of this program with the Half-Life Game Engine ("HL 
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve, 
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all 
- *  respects for all of the code used other than the HL Engine and MODs 
- *  from Valve. If you modify this file, you may extend this exception 
- *  to your version of the file, but you are not obligated to do so. If 
- *  you do not wish to do so, delete this exception statement from your 
- *  version. 
- */ 
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Natural Selection Module
+//
 
 #ifndef PARTICLEMANAGER_H
 #define PARTICLEMANAGER_H
 
+#include <am-vector.h>
+#include <am-string.h>
+
 typedef struct psystem_s
 {
-	String			 Name;
+	ke::AString		 Name;
 	int				 id;
 	int				 IsStatic; // Set to 1 if the particle system is loaded from ns.ps
 
@@ -45,43 +28,36 @@ typedef struct psystem_s
 class ParticleManager
 {
 private:
-	CVector<ParticleSystem *>		 Systems;
-	int								 m_iFileLoaded;
-	unsigned short					 m_iEventID;
+	ke::Vector<ParticleSystem *>	Systems;
+	int								m_iFileLoaded;
+	unsigned short					m_iEventID;
 
 public:
 	ParticleManager()
 	{
 		m_iFileLoaded=0;
 		m_iEventID=0;
-		Systems.reserve(64);
+		Systems.ensure(64);
 	};
 
 	// Remove all non-static particle systems
 	inline void Prune()
 	{
-		if (Systems.size()==0)
+		for (size_t i = 0; i < Systems.length(); ++i)
 		{
-			return;
+			if (Systems[i]->IsStatic)
+			{
+				break;
+			}
+
+			Systems.remove(i);
+			delete Systems.at(i);
+
+			if (!Systems.length())
+			{
+				break;
+			}
 		}
-		CVector<ParticleSystem *>::iterator		iter;
-		while (1)
-		{
-			if (Systems.size()==0)
-			{
-				break;
-			}
-			iter=Systems.end();
-			iter--;
-
-			if ((*iter)->IsStatic)
-			{
-				break;
-			}
-
-			delete (*iter);
-			Systems.pop_back();
-		};
 	};
 
 	void ReadFile(void);
@@ -90,13 +66,13 @@ public:
 	{
 		ParticleSystem *ps=new ParticleSystem;
 
-		ps->id=Systems.size();
+		ps->id=Systems.length();
 		ps->IsStatic=Static;
-		ps->Name.assign(Start);
+		ps->Name = Start;
 
-		Systems.push_back(ps);
+		Systems.append(ps);
 
-		return Systems.size()-1;
+		return Systems.length()-1;
 	};
 	inline void FireSystem(int id, float *Origin, float *Angles, int flags)
 	{
@@ -130,16 +106,12 @@ public:
 	};
 	inline int Find(const char *Needle)
 	{
-		CVector<ParticleSystem *>::iterator iter=Systems.begin();
-		CVector<ParticleSystem *>::iterator end=Systems.end();
-
-		while (iter!=end)
+		for (size_t i = 0; i < Systems.length(); ++i)
 		{
-			if (strcmp(Needle,(*iter)->Name.c_str())==0)
+			if (strcmp(Needle, Systems[i]->Name.chars()) == 0)
 			{
-				return (*iter)->id;
+				return Systems[i]->id;
 			}
-			++iter;
 		}
 
 		return -1;

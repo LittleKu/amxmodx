@@ -1,36 +1,15 @@
-/* AMX Mod X
-*   Menus Front-End Plugin
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is part of AMX Mod X.
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Menus Front-End Plugin
+//
 
 #include <amxmodx>
 #include <amxmisc>
@@ -41,7 +20,7 @@
 #define MENUITEMSPERPAGE	8
 //#define MENUS_NUMBER 16
 
-new g_menuPosition[33]
+new g_menuPosition[MAX_PLAYERS]
 new g_menusNumber = 0
 new g_menuBody[MAXMENUS][STRINGSIZE]
 new bool:g_menuBodyPhrase[MAXMENUS]
@@ -51,7 +30,7 @@ new g_menuPlugin[MAXMENUS][STRINGSIZE]
 
 new g_coloredMenus
 
-new g_clientMenuPosition[33]
+new g_clientMenuPosition[MAX_PLAYERS]
 new g_clientMenusNumber = 0
 new g_clientMenuBody[MAXMENUS][STRINGSIZE]
 new bool:g_clientMenuBodyPhrase[MAXMENUS]
@@ -199,7 +178,7 @@ displayMenu(id, pos)
 	if (start >= g_menusNumber)		// MENUS_NUMBER
 		start = pos = g_menuPosition[id] = 0
 
-	new len = format(menuBody, 511, 
+	new len = format(menuBody, charsmax(menuBody), 
 	
 	g_coloredMenus ? "\yAMX Mod X Menu\R%d/%d^n\w^n" : "AMX Mod X Menu %d/%d^n^n" , pos + 1, (g_menusNumber / MENUITEMSPERPAGE) + (((g_menusNumber % MENUITEMSPERPAGE) > 0) ? 1 : 0))
 
@@ -218,33 +197,33 @@ displayMenu(id, pos)
 			keys |= (1<<b)
 			
 			if (g_menuBodyPhrase[a])
-				len += format(menuBody[len], 511-len, "%d. %L^n", ++b, id, g_menuBody[a])
+				len += format(menuBody[len], charsmax(menuBody) - len, "%d. %L^n", ++b, id, g_menuBody[a])
 			else
-				len += format(menuBody[len], 511-len, "%d. %s^n", ++b, g_menuBody[a])
+				len += format(menuBody[len], charsmax(menuBody) - len, "%d. %s^n", ++b, g_menuBody[a])
 		} else {
 			++b
 			
 			if (g_coloredMenus)
 			{
 				if (g_menuBodyPhrase[a])
-					len += format(menuBody[len], 511-len, "\d%d. %L^n\w", b, id, g_menuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "\d%d. %L^n\w", b, id, g_menuBody[a])
 				else
-					len += format(menuBody[len], 511-len, "\d%d. %s^n\w", b, g_menuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "\d%d. %s^n\w", b, g_menuBody[a])
 			} else {
 				if (g_menuBodyPhrase[a])
-					len += format(menuBody[len], 511-len, "#. %L^n", id, g_menuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "#. %L^n", id, g_menuBody[a])
 				else
-					len += format(menuBody[len], 511-len, "#. %s^n", g_menuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "#. %s^n", g_menuBody[a])
 			}
 		}
 	}
 
 	if (end != g_menusNumber)		// MENUS_NUMBER
 	{
-		format(menuBody[len], 511-len, "^n9. %L...^n0. %L", id, "MORE", id, pos ? "BACK" : "EXIT")
+		format(menuBody[len], charsmax(menuBody) - len, "^n9. %L...^n0. %L", id, "MORE", id, pos ? "BACK" : "EXIT")
 		keys |= MENU_KEY_9
 	} else {
-		format(menuBody[len], 511-len, "^n0. %L", id, pos ? "BACK" : "EXIT")
+		format(menuBody[len], charsmax(menuBody) - len, "^n0. %L", id, pos ? "BACK" : "EXIT")
 	}
 
 	show_menu(id, keys, menuBody)
@@ -262,7 +241,7 @@ clientDisplayMenu(id, pos)
 	if (start >= g_clientMenusNumber)		// MENUS_NUMBER
 		start = pos = g_clientMenuPosition[id] = 0
 
-	new len = format(menuBody, 511, g_coloredMenus ? "\yAMX Mod X Client Menu\R%d/%d^n\w^n" : "AMX Mod X Client Menu %d/%d^n^n" , pos + 1, (g_clientMenusNumber / MENUITEMSPERPAGE) + (((g_clientMenusNumber % MENUITEMSPERPAGE) > 0) ? 1 : 0))
+	new len = format(menuBody, charsmax(menuBody), g_coloredMenus ? "\yAMX Mod X Client Menu\R%d/%d^n\w^n" : "AMX Mod X Client Menu %d/%d^n^n" , pos + 1, (g_clientMenusNumber / MENUITEMSPERPAGE) + (((g_clientMenusNumber % MENUITEMSPERPAGE) > 0) ? 1 : 0))
 
 	new end = start + MENUITEMSPERPAGE
 	new keys = MENU_KEY_0
@@ -279,34 +258,34 @@ clientDisplayMenu(id, pos)
 			keys |= (1<<b)
 			
 			if (g_clientMenuBodyPhrase[a])
-				len += format(menuBody[len], 511-len, "%d. %L^n", ++b, id, g_clientMenuBody[a])
+				len += format(menuBody[len], charsmax(menuBody) - len, "%d. %L^n", ++b, id, g_clientMenuBody[a])
 			else
-				len += format(menuBody[len], 511-len, "%d. %s^n", ++b, g_clientMenuBody[a])
+				len += format(menuBody[len], charsmax(menuBody) - len, "%d. %s^n", ++b, g_clientMenuBody[a])
 		} else {
 			++b
 			
 			if (g_coloredMenus)
 			{
 				if (g_clientMenuBodyPhrase[a])
-					len += format(menuBody[len], 511-len, "\d%d. %L^n\w", b, id, g_clientMenuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "\d%d. %L^n\w", b, id, g_clientMenuBody[a])
 				else
-					len += format(menuBody[len], 511-len, "\d%d. %s^n\w", b, g_clientMenuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "\d%d. %s^n\w", b, g_clientMenuBody[a])
 			} else {
 				if (g_clientMenuBodyPhrase[a])
-					len += format(menuBody[len], 511-len, "#. %L^n", id, g_clientMenuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "#. %L^n", id, g_clientMenuBody[a])
 				else
-					len += format(menuBody[len], 511-len, "#. %s^n", g_clientMenuBody[a])
+					len += format(menuBody[len], charsmax(menuBody) - len, "#. %s^n", g_clientMenuBody[a])
 			}
 		}
 	}
 
 	if (end != g_clientMenusNumber)			// MENUS_NUMBER
 	{
-		format(menuBody[len], 511-len, "^n9. %L...^n0. %L", id, "MORE", id, pos ? "BACK" : "EXIT")
+		format(menuBody[len], charsmax(menuBody) - len, "^n9. %L...^n0. %L", id, "MORE", id, pos ? "BACK" : "EXIT")
 		keys |= MENU_KEY_9
 	}
 	else {
-		format(menuBody[len], 511-len, "^n0. %L", id, pos ? "BACK" : "EXIT")
+		format(menuBody[len], charsmax(menuBody) - len, "^n0. %L", id, pos ? "BACK" : "EXIT")
 	}
 
 	show_menu(id, keys, menuBody)
@@ -386,6 +365,6 @@ public plugin_cfg()
 	AddDefaultMenus()
 
 	new configs[128]
-	get_configsdir(configs, 127)
+	get_configsdir(configs, charsmax(configs))
 	server_cmd("exec %s/custommenuitems.cfg", configs)
 }

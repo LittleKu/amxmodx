@@ -86,14 +86,22 @@ class Vector : public AllocPolicy
   }
 
   // Shift all elements including |at| up by one, and insert |item| at the
-  // given position. This is a linear-time operation.
+  // given position. If |at| is one greater than the last usable index,
+  // i.e. |at == length()|, then this is the same as append(). No other
+  // invalid indexes are allowed.
+  //
+  // This is a linear-time operation.
   bool insert(size_t at, const T &item) {
+    if (at == length())
+      return append(item);
     if (!moveUp(at))
       return false;
     new (&data_[at]) T(item);
     return true;
   }
   bool insert(size_t at, Moveable<T> item) {
+    if (at == length())
+      return append(item);
     if (!moveUp(at))
       return false;
     new (&data_[at]) T(item);
@@ -104,7 +112,7 @@ class Vector : public AllocPolicy
   // element. This is a linear-time operation.
   void remove(size_t at) {
     for (size_t i = at; i < length() - 1; i++)
-      data_[i] = T(Moveable<T>(data_[i + 1]));
+      data_[i] = Moveable<T>(data_[i + 1]);
     pop();
   }
 
@@ -152,6 +160,19 @@ class Vector : public AllocPolicy
     return data_;
   }
 
+  bool resize(size_t newLength) {
+    if (newLength < length()) {
+      while (newLength < length())
+        pop();
+    } else if (newLength > length()) {
+      if (!ensure(newLength))
+        return false;
+      size_t count = newLength - length();
+      for (size_t i = 0; i < count; i++)
+        infallibleAppend(T());
+    }
+    return true;
+  }
   bool ensure(size_t desired) {
     if (desired <= length())
       return true;

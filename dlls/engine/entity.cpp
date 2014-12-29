@@ -1,3 +1,16 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Engine Module
+//
+
 #include "entity.h"
 
 int is_ent_valid(int iEnt)
@@ -1464,7 +1477,7 @@ static cell AMX_NATIVE_CALL find_ent_by_owner(AMX *amx, cell *params)  // native
 	int iEnt = params[1];
 	int oEnt = params[3];
 	// Check index to start searching at, 0 must be possible for iEnt.
-	CHECK_ENTITY(oEnt);
+	CHECK_ENTITY_SIMPLE(oEnt);
 
 	edict_t *pEnt = INDEXENT2(iEnt);
 	edict_t *entOwner = INDEXENT2(oEnt);

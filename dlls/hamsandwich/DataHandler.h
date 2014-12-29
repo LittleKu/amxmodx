@@ -1,38 +1,23 @@
-/* Ham Sandwich
- *   Copyright 2007-2014
- *   By the AMX Mod X Development Team
- *
- *  Ham Sandwich is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at
- *  your option) any later version.
- *
- *  Ham Sandwich is distributed in the hope that it will be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Ham Sandwich; if not, write to the Free Software Foundation,
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *  In addition, as a special exception, the author gives permission to
- *  link the code of Ham Sandwich with the Half-Life Game Engine ("HL
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve,
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all
- *  respects for all of the code used other than the HL Engine and MODs
- *  from Valve. If you modify this file, you may extend this exception
- *  to your version of the file, but you are not obligated to do so. If
- *  you do not wish to do so, delete this exception statement from your
- *  version.
- */
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Ham Sandwich Module
+//
+
 #ifndef RETURNHANDLER_H
 #define RETURNHANDLER_H
 
 #include "ham_utils.h" 
-#include "CVector.h"
-#include "CString.h"
-#include "sh_stack.h"
+#include <am-vector.h>
+#include <am-string.h>
+#include <sh_stack.h>
 
 enum
 {
@@ -199,7 +184,7 @@ public:
 			return -1;
 		}
 
-		String *str=reinterpret_cast<String *>(m_data);
+		ke::AString *str=reinterpret_cast<ke::AString *>(m_data);
 
 		cell *i=data;
 		size_t len=0;
@@ -218,7 +203,7 @@ public:
 			/* nothing */
 		}
 
-		str->assign(temp);
+		*str = temp;
 
 		delete[] temp;
 
@@ -345,7 +330,7 @@ public:
 		{
 			return -1;
 		}
-		const char *i=(reinterpret_cast<String *>(m_data)->c_str());
+		const char *i=(reinterpret_cast<ke::AString *>(m_data)->chars());
 
 		while (len-- && 
 			  (*data++=*i++)!='\0')
@@ -384,6 +369,6 @@ public:
 
 extern CStack< Data * > ReturnStack;
 extern CStack< Data * > OrigReturnStack;
-extern CStack< CVector< Data * > * > ParamStack;
+extern CStack< ke::Vector< Data * > * > ParamStack;
 extern CStack< int * > ReturnStatus;
 #endif

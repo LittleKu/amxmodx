@@ -17,8 +17,6 @@
  *  2.  Altered source versions must be plainly marked as such, and must not be
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
- *
- *  Version: $Id: amx.h 3006 2006-08-28 11:08:18Z dvander $
  */
 
 #if defined FREEBSD && !defined __FreeBSD__
@@ -322,7 +320,7 @@ enum {
 #define AMX_FLAG_COMPACT  0x04  /* compact encoding */
 #define AMX_FLAG_BYTEOPC  0x08  /* opcode is a byte (not a cell) */
 #define AMX_FLAG_NOCHECKS 0x10  /* no array bounds checking; no STMT opcode */
-#define AMX_FLAG_OLDFILE  0x20	/* Old AMX Mod plugin */
+/*      AMX_FLAG_OLDFILE  0x20	   Old AMX Mod plugin */
 #define AMX_FLAG_PRENIT	 0x100	/* pre-initialized, do not check natives */
 #define AMX_FLAG_NTVREG 0x1000  /* all native functions are registered */
 #define AMX_FLAG_JITC   0x2000  /* abstract machine is JIT compiled */

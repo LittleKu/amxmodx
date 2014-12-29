@@ -1,3 +1,12 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
 #include "amxmodx.h"
 #include "messages.h"
 
@@ -380,6 +389,7 @@ static cell _message_begin(AMX *amx, cell *params, bool useFloat) /* 4 param */
 	case MSG_BROADCAST:
 	case MSG_ALL:
 	case MSG_SPEC:
+	case MSG_INIT:
 		MESSAGE_BEGIN(params[1], params[2], NULL);
 		break;
 	case MSG_PVS: case MSG_PAS:

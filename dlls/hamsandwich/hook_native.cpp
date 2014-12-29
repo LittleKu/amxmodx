@@ -1,31 +1,16 @@
-/* Ham Sandwich
- *   Copyright 2007-2014
- *   By the AMX Mod X Development Team
- *
- *  Ham Sandwich is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at
- *  your option) any later version.
- *
- *  Ham Sandwich is distributed in the hope that it will be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Ham Sandwich; if not, write to the Free Software Foundation,
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *  In addition, as a special exception, the author gives permission to
- *  link the code of Ham Sandwich with the Half-Life Game Engine ("HL
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve,
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all
- *  respects for all of the code used other than the HL Engine and MODs
- *  from Valve. If you modify this file, you may extend this exception
- *  to your version of the file, but you are not obligated to do so. If
- *  you do not wish to do so, delete this exception statement from your
- *  version.
- */
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Ham Sandwich Module
+//
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -33,9 +18,6 @@
 
 #include <extdll.h>
 #include "amxxmodule.h"
-
-
-#include "CVector.h"
 
 #include "hook.h"
 #include "forward.h"
@@ -46,12 +28,13 @@
 #include "hooklist.h"
 #include "ham_utils.h"
 #include "hook_specialbot.h"
+#include <am-vector.h>
 
 OffsetManager Offsets;
 
 bool gDoForwards=true;
 
-CVector<Hook *> hooks[HAM_LAST_ENTRY_DONT_USE_ME_LOL];
+ke::Vector<Hook *> hooks[HAM_LAST_ENTRY_DONT_USE_ME_LOL];
 CHamSpecialBotHandler SpecialbotHandler;
 
 #define V(__KEYNAME, __STUFF__) 0, 0, __KEYNAME, RT_##__STUFF__, RB_##__STUFF__, PC_##__STUFF__, reinterpret_cast<void *>(Hook_##__STUFF__), Create_##__STUFF__, Call_##__STUFF__
@@ -599,10 +582,12 @@ static cell AMX_NATIVE_CALL RegisterHam(AMX *amx, cell *params)
 		enableSpecialBot = params[5] > 0;
 	}
 
+	Forward *pfwd = new Forward(fwd);
+
 	// We've passed all tests...
 	if (strcmp(classname, "player") == 0 && enableSpecialBot)
 	{
-		SpecialbotHandler.RegisterHamSpecialBot(amx, func, function, post, fwd);
+		SpecialbotHandler.RegisterHamSpecialBot(amx, func, function, post, pfwd);
 	}
 
 	int **ivtable=(int **)vtable;
@@ -611,22 +596,18 @@ static cell AMX_NATIVE_CALL RegisterHam(AMX *amx, cell *params)
 
 	// Check the list of this function's hooks, see if the function we have is a hook
 
-	CVector<Hook *>::iterator end=hooks[func].end();
-	for (CVector<Hook *>::iterator i=hooks[func].begin();
-		 i!=end;
-		 ++i)
+	for (size_t i = 0; i < hooks[func].length(); ++i)
 	{
-		if ((*i)->tramp == vfunction)
+		if (hooks[func].at(i)->tramp == vfunction)
 		{
 			// Yes, this function is hooked
-			Forward *pfwd=new Forward(fwd);
 			if (post)
 			{
-				(*i)->post.push_back(pfwd);
+				hooks[func].at(i)->post.append(pfwd);
 			}
 			else
 			{
-				(*i)->pre.push_back(pfwd);
+				hooks[func].at(i)->pre.append(pfwd);
 			}
 			return reinterpret_cast<cell>(pfwd);
 		}
@@ -634,16 +615,15 @@ static cell AMX_NATIVE_CALL RegisterHam(AMX *amx, cell *params)
 
 	// If we got here, the function is not hooked
 	Hook *hook = new Hook(vtable, hooklist[func].vtid, hooklist[func].targetfunc, hooklist[func].isvoid, hooklist[func].needsretbuf, hooklist[func].paramcount, classname);
-	hooks[func].push_back(hook);
+	hooks[func].append(hook);
 
-	Forward *pfwd=new Forward(fwd);
 	if (post)
 	{
-		hook->post.push_back(pfwd);
+		hook->post.append(pfwd);
 	}
 	else
 	{
-		hook->pre.push_back(pfwd);
+		hook->pre.append(pfwd);
 	}
 
 	return reinterpret_cast<cell>(pfwd);
@@ -702,22 +682,19 @@ static cell AMX_NATIVE_CALL RegisterHamFromEntity(AMX *amx, cell *params)
 
 	// Check the list of this function's hooks, see if the function we have is a hook
 
-	CVector<Hook *>::iterator end=hooks[func].end();
-	for (CVector<Hook *>::iterator i=hooks[func].begin();
-		 i!=end;
-		 ++i)
+	for (size_t i = 0; i < hooks[func].length(); ++i)
 	{
-		if ((*i)->tramp == vfunction)
+		if (hooks[func].at(i)->tramp == vfunction)
 		{
 			// Yes, this function is hooked
 			Forward *pfwd=new Forward(fwd);
 			if (post)
 			{
-				(*i)->post.push_back(pfwd);
+				hooks[func].at(i)->post.append(pfwd);
 			}
 			else
 			{
-				(*i)->pre.push_back(pfwd);
+				hooks[func].at(i)->pre.append(pfwd);
 			}
 			return reinterpret_cast<cell>(pfwd);
 		}
@@ -727,20 +704,20 @@ static cell AMX_NATIVE_CALL RegisterHamFromEntity(AMX *amx, cell *params)
 	// It may very well be wrong (such as lots of TS weapons have the same classname)
 	// but it's the best we can do, and better than nothing.
 	// (only used for display)
-	snprintf(classname, sizeof(classname) - 1, "%s", STRING(Entity->v.classname));
+	UTIL_Format(classname, sizeof(classname) - 1, "%s", STRING(Entity->v.classname));
 
 	// If we got here, the function is not hooked
 	Hook *hook = new Hook(vtable, hooklist[func].vtid, hooklist[func].targetfunc, hooklist[func].isvoid, hooklist[func].needsretbuf, hooklist[func].paramcount, classname);
-	hooks[func].push_back(hook);
+	hooks[func].append(hook);
 
 	Forward *pfwd=new Forward(fwd);
 	if (post)
 	{
-		hook->post.push_back(pfwd);
+		hook->post.append(pfwd);
 	}
 	else
 	{
-		hook->pre.push_back(pfwd);
+		hook->pre.append(pfwd);
 	}
 
 	return reinterpret_cast<cell>(pfwd);

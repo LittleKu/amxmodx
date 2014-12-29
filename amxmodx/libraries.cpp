@@ -1,3 +1,12 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
 #include "libraries.h"
 #include "sh_list.h"
 
@@ -88,7 +97,7 @@ size_t AddLibrariesFromString(const char *name, LibType type, LibSource src, voi
 	char *ptr, *p, s;
 	size_t count = 0;
 
-	snprintf(buffer, sizeof(buffer)-1, "%s", name);
+	UTIL_Format(buffer, sizeof(buffer)-1, "%s", name);
 
 	ptr = buffer;
 	p = buffer;

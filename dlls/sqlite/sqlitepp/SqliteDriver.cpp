@@ -1,12 +1,22 @@
-#include <string.h>
-#include <stdio.h>
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// SQLite Module
+//
+
+#include "amxxmodule.h"
 #include "SqliteHeaders.h"
 #include "SqliteDriver.h"
 #include "SqliteDatabase.h"
 
 #if defined WIN32
-#define snprintf _snprintf
-#define strncasecmp strnicmp
 #define WINDOWS_LEAN_AND_MEAN
 #include <windows.h>
 #else
@@ -52,7 +62,7 @@ IDatabase *SqliteDriver::Connect(DatabaseInfo *info, int *errcode, char *error, 
 		}
 		if (error)
 		{
-			snprintf(error, maxlength, "%s", sqlite3_errmsg(pSql));
+			UTIL_Format(error, maxlength, "%s", sqlite3_errmsg(pSql));
 		}
 		sqlite3_close(pSql);
 		return NULL;

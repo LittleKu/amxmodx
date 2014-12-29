@@ -1,36 +1,15 @@
-/* AMX Mod X
-*   Misc. Stats Plugin
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is part of AMX Mod X.
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation, 
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve, 
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Misc. Stats Plugin
+//
 
 #include <amxmodx>
 #include <amxmisc>
@@ -51,6 +30,7 @@ public BombReached
 public ItalyBonusKill
 public EnemyRemaining
 public LastMan
+public LastManHealth
 public KnifeKill
 public KnifeKillSound
 public GrenadeKill
@@ -77,8 +57,8 @@ public GrenadeSuicideSound
 const SOUNDFILE_PATH_MAXLEN = 64
 const SOUND_SHORTPATH_MAXLEN = SOUNDFILE_PATH_MAXLEN - 10 // 64 (sound/ [ 54 ] .wav) critical value for fast dl
 
-new g_streakKills[33][2]
-new g_multiKills[33][2]
+new g_streakKills[MAX_PLAYERS][2]
+new g_multiKills[MAX_PLAYERS][2]
 new g_C4Timer
 new g_Defusing
 new g_Planter 
@@ -87,7 +67,7 @@ new g_LastAnnounce
 new g_roundCount
 new Float:g_doubleKill
 new g_doubleKillId
-new g_friend[33]
+new g_friend[MAX_PLAYERS]
 new g_firstBlood
 new g_center1_sync
 new g_announce_sync
@@ -104,8 +84,8 @@ const TASK_DELAYED_NEW_ROUND = 98038
 const TEAM_T = 1
 const TEAM_CT = 2
 
-new g_connected[33]
-new g_msounds[33]
+new g_connected[MAX_PLAYERS]
+new g_msounds[MAX_PLAYERS]
 new const _msound[] = "_msound"
 
 new g_MultiKillMsg[7][] =
@@ -446,6 +426,7 @@ public plugin_cfg()
 	server_cmd(g_addStast, "ST_BOMB_SITE", "BombReached")
 	server_cmd(g_addStast, "ST_ITALY_BONUS", "ItalyBonusKill")
 	server_cmd(g_addStast, "ST_LAST_MAN", "LastMan")
+	server_cmd(g_addStast, "ST_LAST_MAN_HEALTH", "LastManHealth")
 	server_cmd(g_addStast, "ST_LAST_MAN_SOUND", "LastManSound")
 	server_cmd(g_addStast, "ST_KNIFE_KILL", "KnifeKill")
 	server_cmd(g_addStast, "ST_KNIFE_KILL_SOUND", "KnifeKillSound")
@@ -527,7 +508,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 
 			if ((a > -1) && !(a % 2))
 			{
-				new name[32]
+				new name[MAX_NAME_LENGTH]
 				get_user_name(killer, name, charsmax(name))
 				
 				if ((a >>= 1) > 6)
@@ -558,7 +539,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 			
 			param[0] = killer
 			param[1] = g_multiKills[killer][0]
-			set_task(4.0 + float(param[1]), "checkKills", killer, param, 2)
+			set_task(4.0 + float(param[1]), "checkKills", killer, param, sizeof(param))
 		}
 	}
 
@@ -648,17 +629,27 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 		{
 			if( LastMan )
 			{
-				new ctname[32], tname[32]
+				new ctname[MAX_NAME_LENGTH], tname[MAX_NAME_LENGTH]
 				
 				get_user_name(cts[0], ctname, charsmax(ctname))
 				get_user_name(ts[0], tname, charsmax(tname))
 				
 				set_hudmessage(0, 255, 255, -1.0, 0.35, 0, 6.0, 6.0, 0.5, 0.15, -1)
-				ShowSyncHudMsg(0, g_center1_sync, "%s vs. %s", ctname, tname)
+				
+				if( LastManHealth )
+				{
+					ShowSyncHudMsg(0, g_center1_sync, "%s (%d HP) vs. %s (%d HP)", ctname, get_user_health(cts[0]), tname, get_user_health(ts[0]))
+				}
+				else
+				{
+					ShowSyncHudMsg(0, g_center1_sync, "%s vs. %s", ctname, tname)
+				}
 			}
 			
 			if( LastManSound )
+			{
 				play_sound(0, g_lastmansound_duel)
+			}
 		}
 		else if (!g_LastAnnounce)
 		{
@@ -681,13 +672,22 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 			{
 				if( LastMan )
 				{
-					new name[32]
+					new name[MAX_NAME_LENGTH]
 				
 					get_user_name(g_LastAnnounce, name, charsmax(name))
 				
 					set_hudmessage(0, 255, 255, -1.0, 0.38, 0, 6.0, 6.0, 0.5, 0.15, -1)
-					ShowSyncHudMsg(0, g_center1_sync, "%s (%d HP) vs. %d %s%s: %L", name, get_user_health(g_LastAnnounce), oposite, g_teamsNames[_team], (oposite == 1) ? "" : "S", LANG_PLAYER, g_LastMessages[random_num(0, 3)])
+					
+					if( LastManHealth )
+					{
+						ShowSyncHudMsg(0, g_center1_sync, "%s (%d HP) vs. %d %s%s: %L", name, get_user_health(g_LastAnnounce), oposite, g_teamsNames[_team], (oposite == 1) ? "" : "S", LANG_PLAYER, g_LastMessages[random_num(0, 3)])
+					}
+					else
+					{
+						ShowSyncHudMsg(0, g_center1_sync, "%s vs. %d %s%s: %L", name, oposite, g_teamsNames[_team], (oposite == 1) ? "" : "S", LANG_PLAYER, g_LastMessages[random_num(0, 3)])
+					}
 				}
+				
 				if ( LastManSound && g_connected[g_LastAnnounce] )
 				{
 					play_sound(g_LastAnnounce, g_lastmansound_1vsothers)
@@ -700,7 +700,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 	{
 		if (KnifeKill)
 		{
-			new killer_name[32], victim_name[32]
+			new killer_name[MAX_NAME_LENGTH], victim_name[MAX_NAME_LENGTH]
 			
 			get_user_name(killer, killer_name, charsmax(killer_name))
 			get_user_name(victim, victim_name, charsmax(victim_name))
@@ -715,7 +715,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 
 	if (wpnindex == CSW_HEGRENADE)
 	{
-		new killer_name[32], victim_name[32]
+		new killer_name[MAX_NAME_LENGTH], victim_name[MAX_NAME_LENGTH]
 		if( GrenadeKill || GrenadeSuicide )
 		{
 			get_user_name(killer, killer_name, charsmax(killer_name))
@@ -744,7 +744,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 	{
 		if (HeadShotKill && wpnindex)
 		{
-			new killer_name[32], victim_name[32], weapon_name[32], message[256], players[32], pnum, plr
+			new killer_name[MAX_NAME_LENGTH], victim_name[MAX_NAME_LENGTH], weapon_name[32], message[256], players[32], pnum, plr
 			
 			xmod_get_wpnname(wpnindex, weapon_name, charsmax(weapon_name))
 			get_user_name(killer, killer_name, charsmax(killer_name))
@@ -781,7 +781,7 @@ public client_death(killer, victim, wpnindex, hitplace, TK)
 		{
 			if (DoubleKill)
 			{
-				new name[32]
+				new name[MAX_NAME_LENGTH]
 				
 				get_user_name(killer, name, charsmax(name))
 				
@@ -813,7 +813,7 @@ public showStatus(id)
 {
 	if( PlayerName) 
 	{
-		new name[32], pid = read_data(2)
+		new name[MAX_NAME_LENGTH], pid = read_data(2)
 	
 		get_user_name(pid, name, charsmax(name))
 		new color1 = 0, color2 = 0
@@ -914,7 +914,7 @@ public checkKills(param[])
 			
 			if (MultiKill)
 			{
-				new name[32]
+				new name[MAX_NAME_LENGTH]
 				
 				get_user_name(id, name, charsmax(name))
 				set_hudmessage(255, 0, 100, 0.05, 0.50, 2, 0.02, 6.0, 0.01, 0.1, -1)
@@ -945,7 +945,7 @@ public radioKill()
 
 announceEvent(id, message[])
 {
-	new name[32]
+	new name[MAX_NAME_LENGTH]
 	
 	get_user_name(id, name, charsmax(name))
 	set_hudmessage(255, 100, 50, -1.0, 0.30, 0, 6.0, 6.0, 0.5, 0.15, -1)

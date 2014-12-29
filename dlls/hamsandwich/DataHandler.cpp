@@ -1,36 +1,21 @@
-/* Ham Sandwich
- *   Copyright 2007-2014
- *   By the AMX Mod X Development Team
- *
- *  Ham Sandwich is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at
- *  your option) any later version.
- *
- *  Ham Sandwich is distributed in the hope that it will be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Ham Sandwich; if not, write to the Free Software Foundation,
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *  In addition, as a special exception, the author gives permission to
- *  link the code of Ham Sandwich with the Half-Life Game Engine ("HL
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve,
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all
- *  respects for all of the code used other than the HL Engine and MODs
- *  from Valve. If you modify this file, you may extend this exception
- *  to your version of the file, but you are not obligated to do so. If
- *  you do not wish to do so, delete this exception statement from your
- *  version.
- */
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Ham Sandwich Module
+//
+
 #include "amxxmodule.h"
 
-#include "CVector.h"
-#include "CString.h"
-#include "sh_stack.h"
+#include <am-vector.h>
+#include <am-string.h>
+#include <sh_stack.h>
 #include "DataHandler.h"
 
 #include "ham_const.h"
@@ -39,7 +24,7 @@
 
 CStack< Data * > ReturnStack;
 CStack< Data * > OrigReturnStack;
-CStack< CVector< Data * > * > ParamStack;
+CStack< ke::Vector< Data * > * > ParamStack;
 CStack< int * > ReturnStatus;
 #define CHECK_STACK(__STACK__)								\
 	if (  ( __STACK__ ).size() <= 0)						\
@@ -195,10 +180,10 @@ static cell AMX_NATIVE_CALL SetHamReturnString(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL SetHamParamInteger(AMX *amx, cell *params)
 {
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1]) 
+	ke::Vector<Data *> *vec = ParamStack.front();
+	if (vec->length() < (unsigned)params[1]) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -215,10 +200,10 @@ static cell AMX_NATIVE_CALL SetHamParamTraceResult(AMX *amx, cell *params)
 		return 0;
 	}
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1]) 
+	ke::Vector<Data *> *vec = ParamStack.front();
+	if (vec->length() < (unsigned)params[1]) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -229,10 +214,10 @@ static cell AMX_NATIVE_CALL SetHamParamTraceResult(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL SetHamParamFloat(AMX *amx, cell *params)
 {
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1] || params[1] < 1) 
+	ke::Vector<Data *> *vec = ParamStack.front();
+	if (vec->length() < (unsigned)params[1] || params[1] < 1) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -243,10 +228,10 @@ static cell AMX_NATIVE_CALL SetHamParamFloat(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL SetHamParamVector(AMX *amx, cell *params)
 {
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1]) 
+	ke::Vector<Data *> *vec = ParamStack.front();
+	if (vec->length() < (unsigned)params[1]) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -257,10 +242,10 @@ static cell AMX_NATIVE_CALL SetHamParamVector(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL SetHamParamEntity(AMX *amx, cell *params)
 {
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1]) 
+	ke::Vector<Data *> *vec = ParamStack.front();
+	if (vec->length() < (unsigned)params[1]) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -271,10 +256,10 @@ static cell AMX_NATIVE_CALL SetHamParamEntity(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL SetHamParamString(AMX *amx, cell *params)
 {
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec=ParamStack.front(); 
-	if (vec->size() < (unsigned)params[1]) 
+	ke::Vector<Data *> *vec=ParamStack.front(); 
+	if (vec->length() < (unsigned)params[1]) 
 	{ 
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size()); 
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length()); 
 		return 0; 
 	} 
 	Data *dat=vec->at(params[1] - 1);
@@ -292,11 +277,11 @@ static cell AMX_NATIVE_CALL SetHamParamItemInfo(AMX *amx, cell *params)
 	}
 
 	CHECK_STACK(ParamStack);
-	CVector<Data *> *vec = ParamStack.front();
+	ke::Vector<Data *> *vec = ParamStack.front();
 
-	if (vec->size() < (unsigned)params[1])
+	if (vec->length() < (unsigned)params[1])
 	{
-		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->size());
+		MF_LogError(amx, AMX_ERR_NATIVE, "Invalid parameter number, got %d, expected %d", params[1], vec->length());
 		return 0;
 	}
 

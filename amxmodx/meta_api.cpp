@@ -1,33 +1,11 @@
-/* AMX Mod X
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include <time.h>
 
@@ -46,13 +24,13 @@
 #include "optimizer.h"
 #include "libraries.h"
 #include "messages.h"
-#include "amxmod_compat.h"
 
 #include "datastructs.h"
 #include "CFlagManager.h"
 #include <amxmodx_version.h>
 #include "trie_natives.h"
 #include "CDataPack.h"
+#include "textparse.h"
 
 plugin_info_t Plugin_info = 
 {
@@ -142,9 +120,11 @@ cvar_t init_amxmodx_version = {"amxmodx_version", "", FCVAR_SERVER | FCVAR_SPONL
 cvar_t init_amxmodx_modules = {"amxmodx_modules", "", FCVAR_SPONLY};
 cvar_t init_amxmodx_debug = {"amx_debug", "1", FCVAR_SPONLY};
 cvar_t init_amxmodx_mldebug = {"amx_mldebug", "", FCVAR_SPONLY};
+cvar_t init_amxmodx_language = {"amx_language", "en", FCVAR_SERVER};
 cvar_t init_amxmodx_cl_langs = {"amx_client_languages", "", FCVAR_SERVER};
 cvar_t* amxmodx_version = NULL;
 cvar_t* amxmodx_modules = NULL;
+cvar_t* amxmodx_language = NULL;
 cvar_t* hostname = NULL;
 cvar_t* mp_timelimit = NULL;
 
@@ -162,6 +142,20 @@ int FF_PluginEnd = -1;
 int FF_InconsistentFile = -1;
 int FF_ClientAuthorized = -1;
 int FF_ChangeLevel = -1;
+
+bool ColoredMenus(String & ModName)
+{
+	const char * pModNames[] = { "cstrike", "czero", "dmc", "dod", "tfc", "valve" };
+	const size_t ModsCount = sizeof(pModNames) / sizeof(const char *);
+
+	for (size_t i = 0; i < ModsCount; ++i)
+	{
+		if (ModName.compare(pModNames[i]) == 0)
+			return true; // this game modification currently supports colored menus	
+	}
+
+	return false; // no colored menus are supported for this game modification
+}
 
 void ParseAndOrAdd(CStack<String *> & files, const char *name)
 {
@@ -227,7 +221,7 @@ void LoadExtraPluginsToPCALM(const char *initialdir)
 	while (!files.empty())
 	{
 		String *pString = files.front();
-		snprintf(path, sizeof(path)-1, "%s/%s", 
+		UTIL_Format(path, sizeof(path)-1, "%s/%s", 
 			initialdir,
 			pString->c_str());
 		g_plugins.CALMFromFile(path);
@@ -244,7 +238,7 @@ void LoadExtraPluginsFromDir(const char *initialdir)
 	while (!files.empty())
 	{
 		String *pString = files.front();
-		snprintf(path, sizeof(path)-1, "%s/%s", 
+		UTIL_Format(path, sizeof(path)-1, "%s/%s", 
 			initialdir,
 			pString->c_str());
 		g_plugins.loadPluginsFromFile(path);
@@ -333,7 +327,7 @@ const char*	get_localinfo_r(const char *name, const char *def, char buffer[], si
 		SET_LOCALINFO((char*)name, (char*)(b = def));
 	}
 
-	snprintf(buffer, maxlength, "%s", b);
+	UTIL_Format(buffer, maxlength, "%s", b);
 
 	return buffer;
 }
@@ -407,7 +401,7 @@ int	C_Spawn(edict_t *pent)
 
 	FlagMan.LoadFile();
 
-	for (unsigned int i=0; i<VectorHolder.size(); i++)
+	for (unsigned int i=0; i<VectorHolder.length(); i++)
 	{
 		delete VectorHolder[i];
 	};
@@ -416,6 +410,7 @@ int	C_Spawn(edict_t *pent)
 	g_TrieHandles.clear();
 	g_TrieSnapshotHandles.clear();
 	g_DataPackHandles.clear();
+	g_TextParsersHandles.clear();
 
 	char map_pluginsfile_path[256];
 	char prefixed_map_pluginsfile[256];
@@ -429,7 +424,7 @@ int	C_Spawn(edict_t *pent)
 	LoadExtraPluginsToPCALM(configs_dir);
 	char temporaryMap[64], *tmap_ptr;
 
-	snprintf(temporaryMap, sizeof(temporaryMap), "%s", STRING(gpGlobals->mapname));
+	UTIL_Format(temporaryMap, sizeof(temporaryMap), "%s", STRING(gpGlobals->mapname));
 
 	prefixed_map_pluginsfile[0] = '\0';
 	if ((tmap_ptr = strchr(temporaryMap, '_')) != NULL)
@@ -437,7 +432,7 @@ int	C_Spawn(edict_t *pent)
 		// this map has a prefix
 
 		*tmap_ptr = '\0';
-		snprintf(prefixed_map_pluginsfile, 
+		UTIL_Format(prefixed_map_pluginsfile, 
 			sizeof(prefixed_map_pluginsfile),
 			"%s/maps/plugins-%s.ini",
 			configs_dir,
@@ -445,7 +440,7 @@ int	C_Spawn(edict_t *pent)
 		g_plugins.CALMFromFile(prefixed_map_pluginsfile);
 	}
 
-	snprintf(map_pluginsfile_path, 
+	UTIL_Format(map_pluginsfile_path, 
 		sizeof(map_pluginsfile_path),
 		"%s/maps/plugins-%s.ini",
 		configs_dir,
@@ -464,12 +459,6 @@ int	C_Spawn(edict_t *pent)
 	char file[255];
 	g_vault.setSource(build_pathname_r(file, sizeof(file) - 1, "%s", get_localinfo("amxx_vault", "addons/amxmodx/configs/vault.ini")));
 	g_vault.loadVault();
-	
-	if (strlen(g_vault.get("server_language")) < 1)
-	{
-		g_vault.put("server_language", "en");
-		g_vault.saveVault();
-	}
 
 	// ###### Init time and freeze tasks
 	g_game_timeleft = g_bmod_dod ? 1.0f : 0.0f;
@@ -1446,9 +1435,11 @@ C_DLLEXPORT	int	Meta_Attach(PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, m
 	CVAR_REGISTER(&init_amxmodx_modules);
 	CVAR_REGISTER(&init_amxmodx_debug);
 	CVAR_REGISTER(&init_amxmodx_mldebug);
+	CVAR_REGISTER(&init_amxmodx_language);
 	CVAR_REGISTER(&init_amxmodx_cl_langs);
 	
 	amxmodx_version = CVAR_GET_POINTER(init_amxmodx_version.name);
+	amxmodx_language = CVAR_GET_POINTER(init_amxmodx_language.name);
 	
 	REG_SVR_COMMAND("amxx", amx_command);
 
@@ -1463,13 +1454,10 @@ C_DLLEXPORT	int	Meta_Attach(PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, m
 	
 	g_mod_name.assign(a);
 
-	if (g_mod_name.compare("cstrike") == 0 || g_mod_name.compare("czero") == 0 || g_mod_name.compare("dod") == 0)
-		g_coloredmenus = true;
-	else
-		g_coloredmenus = false;
+	g_coloredmenus = ColoredMenus(g_mod_name); // whether or not to use colored menus
 
 	// ###### Print short GPL
-	print_srvconsole("\n   AMX Mod X version %s Copyright (c) 2004-2006 AMX Mod X Development Team \n"
+	print_srvconsole("\n   AMX Mod X version %s Copyright (c) 2004-2014 AMX Mod X Development Team \n"
 					 "   AMX Mod X comes with ABSOLUTELY NO WARRANTY; for details type `amxx gpl'.\n", SVN_VERSION_STRING);
 	print_srvconsole("   This is free software and you are welcome to redistribute it under \n"
 					 "   certain conditions; type 'amxx gpl' for details.\n  \n");

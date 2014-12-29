@@ -1,3 +1,12 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
 #include "ThreadWorker.h"
 
 ThreadWorker::ThreadWorker() : 
@@ -34,7 +43,7 @@ ThreadWorker::~ThreadWorker()
 	if (m_state != Worker_Stopped || m_state != Worker_Invalid)
 		Stop(true);
 
-	if (m_ThreadQueue.size())
+	if (m_ThreadQueue.length())
 		Flush(true);
 }
 
@@ -60,7 +69,7 @@ void ThreadWorker::RunThread(IThreadHandle *pHandle)
 		if (this_state != Worker_Stopped)
 		{
 			m_QueueLock->Lock();
-			num = m_ThreadQueue.size();
+			num = m_ThreadQueue.length();
 			if (!num)
 			{
 				/** 
@@ -97,7 +106,7 @@ void ThreadWorker::RunThread(IThreadHandle *pHandle)
 					// run all of the remaining frames first.
 					if (!m_FlushType)
 					{
-						while (m_ThreadQueue.size())
+						while (m_ThreadQueue.length())
 							RunFrame();
 					}
 					break;

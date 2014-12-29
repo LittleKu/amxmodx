@@ -1,33 +1,11 @@
-/* AMX Mod X
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include <time.h>
 #include "amxmodx.h"
@@ -79,7 +57,7 @@ void UTIL_ShowMenu(edict_t* pEdict, int slots, int time, char *menu, int mlen)
 	if (!gmsgShowMenu)
 		return;			// some games don't support ShowMenu (Firearms)
 
-	while (*n)
+	do
 	{
 		a = mlen;
 		if (a > 175) a = 175;
@@ -96,6 +74,7 @@ void UTIL_ShowMenu(edict_t* pEdict, int slots, int time, char *menu, int mlen)
 		*n = c;
 		menu = n;
 	}
+	while (*n);
 }
 
 /* warning - don't pass here const string */
@@ -372,8 +351,8 @@ void UTIL_FakeClientCommand(edict_t *pEdict, const char *cmd, const char *arg1, 
 		g_fakecmd.argv[1] = arg1;
 		g_fakecmd.argv[2] = arg2;
 		// build argument line
-		snprintf(g_fakecmd.args, 255, "%s %s", arg1, arg2);
-		// if snprintf reached 255 chars limit, this will make sure there will be no access violation
+		UTIL_Format(g_fakecmd.args, 255, "%s %s", arg1, arg2);
+		// if UTIL_Format reached 255 chars limit, this will make sure there will be no access violation
 		g_fakecmd.args[255] = 0;
 	}
 	else if (arg1)
@@ -382,8 +361,8 @@ void UTIL_FakeClientCommand(edict_t *pEdict, const char *cmd, const char *arg1, 
 		// store argument
 		g_fakecmd.argv[1] = arg1;
 		// build argument line
-		snprintf(g_fakecmd.args, 255, "%s", arg1);
-		// if snprintf reached 255 chars limit, this will make sure there will be no access violation
+		UTIL_Format(g_fakecmd.args, 255, "%s", arg1);
+		// if UTIL_Format reached 255 chars limit, this will make sure there will be no access violation
 		g_fakecmd.args[255] = 0;
 	}
 	else
@@ -514,18 +493,25 @@ unsigned int UTIL_ReplaceAll(char *subject, size_t maxlength, const char *search
 	return total;
 }
 
-unsigned int strncopy(char *dest, const char *src, size_t count)
+template unsigned int strncopy<char, char>(char *, const char *src, size_t count);
+template unsigned int strncopy<cell, char>(cell *, const char *src, size_t count);
+template unsigned int strncopy<cell, cell>(cell *, const cell *src, size_t count);
+
+template <typename D, typename S>
+unsigned int strncopy(D *dest, const S *src, size_t count)
 {
 	if (!count)
 	{
 		return 0;
 	}
 
-	char *start = dest;
+	D *start = dest;
+
 	while ((*src) && (--count))
 	{
-		*dest++ = *src++;
+		*dest++ = *(unsigned char*)src++;
 	}
+
 	*dest = '\0';
 
 	return (dest - start);
@@ -706,4 +692,22 @@ char *UTIL_ReplaceEx(char *subject, size_t maxLen, const char *search, size_t se
 	}
 
 	return NULL;
+}
+
+size_t UTIL_Format(char *buffer, size_t maxlength, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	size_t len = vsnprintf(buffer, maxlength, fmt, ap);
+	va_end(ap);
+
+	if (len >= maxlength)
+	{
+		buffer[maxlength - 1] = '\0';
+		return (maxlength - 1);
+	}
+	else
+	{
+		return len;
+	}
 }

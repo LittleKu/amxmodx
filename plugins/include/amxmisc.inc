@@ -1,10 +1,11 @@
-/* AMX Mod X misc.
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is provided as is (no warranties).
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #if defined _amxmisc_included
   #endinput
@@ -111,7 +112,7 @@ stock cmd_target(id,const arg[],flags = CMDTARGET_OBEY_IMMUNITY)
 		if ((get_user_flags(player) & ADMIN_IMMUNITY) && 
 			((flags & CMDTARGET_ALLOW_SELF) ? (id != player) : true) ) 
 		{
-			new imname[32];
+			new imname[MAX_NAME_LENGTH];
 			get_user_name(player,imname,31);
 			console_print(id,"%L",id,"CLIENT_IMM",imname);
 			return 0;
@@ -121,7 +122,7 @@ stock cmd_target(id,const arg[],flags = CMDTARGET_OBEY_IMMUNITY)
 	{
 		if (!is_user_alive(player)) 
 		{
-			new imname[32];
+			new imname[MAX_NAME_LENGTH];
 			get_user_name(player,imname,31);
 			console_print(id,"%L",id,"CANT_PERF_DEAD",imname);
 			return 0;
@@ -131,7 +132,7 @@ stock cmd_target(id,const arg[],flags = CMDTARGET_OBEY_IMMUNITY)
 	{
 		if (is_user_bot(player)) 
 		{
-			new imname[32];
+			new imname[MAX_NAME_LENGTH];
 			get_user_name(player,imname,31);
 			console_print(id,"%L",id,"CANT_PERF_BOT",imname);
 			return 0;
@@ -158,7 +159,7 @@ stock show_activity( id, const name[], const fmt[], any:... )
 		// if still not found, then register the cvar as a dummy
 		if (__amx_show_activity == 0)
 		{
-			__amx_show_activity = register_cvar("amx_show_activity", "2");
+			__amx_show_activity = register_cvar("amx_show_activity", "2", FCVAR_PROTECTED);
 		}
 	}
 	
@@ -178,10 +179,7 @@ stock show_activity( id, const name[], const fmt[], any:... )
 	{
 		case 5: // hide name only to admins, show nothing to normal users
 		{
-			new __maxclients=get_maxplayers();
-			
-			
-			for (new i=1; i<=__maxclients; i++)
+			for (new i=1; i<=MaxClients; i++)
 			{
 				if (is_user_connected(i))
 				{
@@ -194,9 +192,7 @@ stock show_activity( id, const name[], const fmt[], any:... )
 		}
 		case 4: // show name only to admins, show nothing to normal users
 		{
-			new __maxclients=get_maxplayers();
-			
-			for (new i=1; i<=__maxclients; i++)
+			for (new i=1; i<=MaxClients; i++)
 			{
 				if (is_user_connected(i))
 				{
@@ -209,9 +205,7 @@ stock show_activity( id, const name[], const fmt[], any:... )
 		}
 		case 3: // show name only to admins, hide name from normal users
 		{
-			new __maxclients=get_maxplayers();
-			
-			for (new i=1; i<=__maxclients; i++)
+			for (new i=1; i<=MaxClients; i++)
 			{
 				if (is_user_connected(i))
 				{
@@ -263,7 +257,7 @@ stock show_activity_id(idtarget, idadmin, const name[], const fmt[], any:...)
 		// if still not found, then register the cvar as a dummy
 		if (__amx_show_activity == 0)
 		{
-			__amx_show_activity = register_cvar("amx_show_activity", "2");
+			__amx_show_activity = register_cvar("amx_show_activity", "2", FCVAR_PROTECTED);
 		}
 	}
 
@@ -342,7 +336,7 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 		// if still not found, then register the cvar as a dummy
 		if (__amx_show_activity == 0)
 		{
-			__amx_show_activity = register_cvar("amx_show_activity", "2");
+			__amx_show_activity = register_cvar("amx_show_activity", "2", FCVAR_PROTECTED);
 		}
 	}
 	
@@ -350,12 +344,10 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 	new keyfmt[256];
 	new i;
 	
-	new __maxclients=get_maxplayers();
-	
 	switch( get_pcvar_num(__amx_show_activity) )
 	{
 	case 5: // hide name to admins, display nothing to normal players
-		while (i++ < __maxclients)
+		while (i++ < MaxClients)
 		{
 			if ( is_user_connected(i) )
 			{
@@ -370,7 +362,7 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 			}
 		}
 	case 4: // show name only to admins, display nothing to normal players
-		while (i++ < __maxclients)
+		while (i++ < MaxClients)
 		{
 			if ( is_user_connected(i) )
 			{
@@ -383,7 +375,7 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 			}
 		}
 	case 3: // show name only to admins, hide name from normal users
-		while (i++ < __maxclients)
+		while (i++ < MaxClients)
 		{
 			if ( is_user_connected(i) )
 			{
@@ -403,7 +395,7 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 			}
 		}
 	case 2: // show name to all users
-		while (i++ < __maxclients)
+		while (i++ < MaxClients)
 		{
 			if ( is_user_connected(i) )
 			{
@@ -413,7 +405,7 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 			}
 		}
 	case 1: // hide name from all users
-		while (i++ < __maxclients)
+		while (i++ < MaxClients)
 		{
 			if ( is_user_connected(i) )
 			{
@@ -428,12 +420,32 @@ stock show_activity_key(const KeyWithoutName[], const KeyWithName[], const ___Ad
 	}
 }
 
-stock colored_menus() 
+stock colored_menus()
 {
-	new mod_name[32];
-	get_modname(mod_name,31);
+	static ColoredMenus = -1;
 
-	return ( equal(mod_name,"cstrike") || equal(mod_name,"czero") || equal(mod_name,"dod") );
+	if (ColoredMenus == -1)
+	{
+		new const ModNames[][] = { "cstrike", "czero", "dmc", "dod", "tfc", "valve" };
+		new ModName[32];
+
+		get_modname(ModName, charsmax(ModName));
+
+		for (new Iterator = 0; Iterator < sizeof(ModNames); Iterator++)
+		{
+			if (equal(ModName, ModNames[Iterator]))
+			{
+				ColoredMenus = 1;
+
+				break;
+			}
+		}
+
+		if (ColoredMenus == -1)
+			ColoredMenus = 0;
+	}
+
+	return ColoredMenus;
 }
 
 stock cstrike_running() 
@@ -565,4 +577,16 @@ stock has_all_flags(id, const flags[])
 {
 	new FlagsNumber=read_flags(flags);
 	return ((get_user_flags(id) & FlagsNumber)==FlagsNumber);
+}
+
+/**
+ * Resets a client's menu.
+ *
+ * @note This is just a wrapper around show_menu for the sake of readability.
+ *
+ * @param index     Client to reset menu to, use 0 to reset to all clients
+ */
+stock reset_menu(index)
+{
+	show_menu(index, 0, "", 0);
 }

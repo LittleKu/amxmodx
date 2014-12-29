@@ -1,10 +1,23 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// NVault Module
+//
+
 #ifndef _INCLUDE_JOURNAL_H
 #define _INCLUDE_JOURNAL_H
 
 #include "Binary.h"
-#include "sh_list.h"
-#include "sh_tinyhash.h"
-#include "CString.h"
+#include <am-linkedlist.h>
+#include <sm_stringhashmap.h>
+#include <am-string.h>
 
 enum JOp
 {
@@ -22,7 +35,13 @@ enum Encode
 	Encode_Medium,
 };
 
-typedef THash<String,String> VaultMap;
+struct ArrayInfo
+{
+	ke::AString value;
+	time_t stamp;
+};
+
+typedef StringHashMap<ArrayInfo> VaultMap;
 
 class Journal
 {
@@ -43,7 +62,7 @@ private:
 	bool WriteInt32(int num);
 	bool WriteString(const char *str, Encode enc);
 private:
-	String m_File;
+	ke::AString m_File;
 	FILE *m_fp;
 	BinaryWriter m_Bw;
 };

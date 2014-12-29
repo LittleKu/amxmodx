@@ -1,3 +1,16 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Fakemeta Module
+//
+
 #include "fakemeta_amxx.h"
 
 /** Optimizations for Fakemeta.  In the end we'll do this for other things too.
@@ -286,23 +299,23 @@ static cell AMX_NATIVE_CALL amx_pev(AMX *amx,cell *params)
 			return num;
 		} else if (ValType & Ret_Int) {
 			char temp[32];
-			snprintf(temp, 31, "%d", rets.i);
+			UTIL_Format(temp, sizeof(temp)-1, "%d", rets.i);
 			return MF_SetAmxString(amx, params[3], temp, size);
 		} else if (ValType == Ret_Float) {
 			char temp[32];
-			snprintf(temp, 31, "%f", rets.f);
+			UTIL_Format(temp, sizeof(temp)-1, "%f", rets.f);
 			return MF_SetAmxString(amx, params[3], temp, size);
 		} else if (ValType == Ret_Vec) {
 			char temp[32];
-			snprintf(temp, 31, "%f %f %f", vr.x, vr.y, vr.z);
+			UTIL_Format(temp, sizeof(temp)-1, "%f %f %f", vr.x, vr.y, vr.z);
 			return MF_SetAmxString(amx, params[3], temp, size);
 		} else if (ValType == Ret_Bytes2) {
 			char temp[32];
-			snprintf(temp, 31, "%d %d", rets.ba[0], rets.ba[1]);
+			UTIL_Format(temp, sizeof(temp)-1, "%d %d", rets.ba[0], rets.ba[1]);
 			return MF_SetAmxString(amx, params[3], temp, size);
 		} else if (ValType == Ret_Bytes4) {
 			char temp[32];
-			snprintf(temp, 31, "%d %d %d %d", rets.ba[0], rets.ba[1], rets.ba[2], rets.ba[3]);
+			UTIL_Format(temp, sizeof(temp)-1, "%d %d %d %d", rets.ba[0], rets.ba[1], rets.ba[2], rets.ba[3]);
 			return MF_SetAmxString(amx, params[3], temp, size);
 		}
 

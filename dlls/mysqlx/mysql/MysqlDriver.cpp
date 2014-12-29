@@ -1,12 +1,19 @@
-#include <stdio.h>
-#include <string.h>
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// MySQL Module
+//
+
+#include "amxxmodule.h"
 #include "MysqlDriver.h"
 #include "MysqlDatabase.h"
-
-#if defined WIN32
-#define snprintf _snprintf
-#define strncasecmp strnicmp
-#endif
 
 using namespace SourceMod;
 
@@ -40,7 +47,7 @@ IDatabase *MysqlDriver::_Connect(DatabaseInfo *info, int *errcode, char *error, 
 			*errcode = -1;
 		if (error && maxlength)
 		{
-			snprintf(error, maxlength, "Initialization failed");
+			UTIL_Format(error, maxlength, "Initialization failed");
 		}
 		return NULL;
 	}
@@ -49,6 +56,12 @@ IDatabase *MysqlDriver::_Connect(DatabaseInfo *info, int *errcode, char *error, 
 	{
 		mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&(info->max_timeout));
 	}
+
+	/** Have MySQL automatically reconnect if it times out or loses connection.
+	 * This will prevent "MySQL server has gone away" errors after a while.
+	 */
+	my_bool my_true = true;
+	mysql_options(mysql, MYSQL_OPT_RECONNECT, (const char *)&my_true);
 
 	if (mysql_real_connect(mysql, 
 							info->host, 
@@ -65,7 +78,7 @@ IDatabase *MysqlDriver::_Connect(DatabaseInfo *info, int *errcode, char *error, 
 		}
 		if (error && maxlength)
 		{
-			snprintf(error, maxlength, "%s", mysql_error(mysql));
+			UTIL_Format(error, maxlength, "%s", mysql_error(mysql));
 		}
 		return NULL;
 	}

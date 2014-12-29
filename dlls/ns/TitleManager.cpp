@@ -1,8 +1,20 @@
-#include "sdk/amxxmodule.h"
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Natural Selection Module
+//
+
+#include "amxxmodule.h"
 #include "ns.h"
 #include "TitleManager.h"
-
-
+#include "utilfunctions.h"
 
 void TitleManager::LoadTitles(void)
 {
@@ -15,7 +27,7 @@ void TitleManager::LoadTitles(void)
 
 	char FileName[128];
 
-	snprintf(FileName,127,"%s/titles.txt",MF_GetModname());
+	UTIL_Format(FileName, sizeof(FileName)-1, "%s/titles.txt", MF_GetModname());
 
 	FILE *fp=fopen(FileName,"r");
 
@@ -123,10 +135,9 @@ scan_for_data:
 		if (*TempPointer=='}')			// end of data
 		{
 			// insert KeyName & Data into the hash
-			String key(KeyName);
+			ke::AString key(UTIL_ToLowerCase(KeyName));
 
-			key.toLower();
-			this->m_Hash.insert(key, new String(Data));
+			this->m_Hash.insert(key, new ke::AString(Data));
 
 			goto scan_for_key;
 		}

@@ -1,39 +1,16 @@
-/* AMX Mod X
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include <ctype.h>
 #include "amxmodx.h"
 #include "format.h"
 #include "binlog.h"
-#include "amxmod_compat.h"
 
 const char* stristr(const char* str, const char* substr)
 {
@@ -110,7 +87,11 @@ int set_amxstring(AMX *amx, cell amx_addr, const char *source, int max)
 	return dest - start;
 }
 
-int set_amxstring_utf8(AMX *amx, cell amx_addr, const char *source, size_t sourcelen, size_t maxlen)
+template int set_amxstring_utf8<cell>(AMX *, cell, const cell *, size_t, size_t);
+template int set_amxstring_utf8<char>(AMX *, cell, const char *, size_t, size_t);
+
+template <typename T>
+int set_amxstring_utf8(AMX *amx, cell amx_addr, const T *source, size_t sourcelen, size_t maxlen)
 {
 	size_t len = sourcelen;
 	bool needtocheck = false;
@@ -141,27 +122,24 @@ int set_amxstring_utf8(AMX *amx, cell amx_addr, const char *source, size_t sourc
 	return len;
 }
 
+int set_amxstring_utf8_char(AMX *amx, cell amx_addr, const char *source, size_t sourcelen, size_t maxlen)
+{
+	return set_amxstring_utf8(amx, amx_addr, source, sourcelen, maxlen);
+}
+
+int set_amxstring_utf8_cell(AMX *amx, cell amx_addr, const cell *source, size_t sourcelen, size_t maxlen)
+{
+	return set_amxstring_utf8(amx, amx_addr, source, sourcelen, maxlen);
+}
+
 extern "C" size_t get_amxstring_r(AMX *amx, cell amx_addr, char *destination, int maxlen)
 {
 	register cell *source = (cell *)(amx->base + (int)(((AMX_HEADER *)amx->base)->dat + amx_addr));
 	register char *dest = destination;
 	char *start = dest;
 
-	if ( (amx->flags & AMX_FLAG_OLDFILE) &&
-		(*source & BCOMPAT_TRANSLATE_BITS) )
-	{
-		const char *def, *key;
-		if (!translate_bcompat(amx, source, &key, &def))
-		{
-			goto normal_string;
-		}
-		while (maxlen-- && *def)
-			*dest++=(*source++);
-	} else {
-normal_string:
-		while (maxlen-- && *source)
-			*dest++=(char)(*source++);
-	}
+	while (maxlen-- && *source)
+		*dest++=(char)(*source++);
 
 	*dest = '\0';
 
@@ -536,40 +514,16 @@ static cell AMX_NATIVE_CALL copy(AMX *amx, cell *params) /* 4 param */
 	cell *src = get_amxaddr(amx, params[3]);
 	int c = params[2];
 
-	if (amx->flags & AMX_FLAG_OLDFILE)
+	cell *dest = get_amxaddr(amx, params[1]);
+	cell *start = dest;
+
+	while (c-- && *src)
 	{
-		if (*src & BCOMPAT_TRANSLATE_BITS)
-		{
-			const char *key, *def;
-			if (!translate_bcompat(amx, src, &key, &def))
-			{
-				goto normal_string;
-			}
-			cell *dest = get_amxaddr(amx, params[1]);
-			cell *start = dest;
-			while (c-- && *def)
-			{
-				*dest++ = static_cast<cell>(*def++);
-			}
-			*dest = '\0';
-
-			return dest-start;
-		} else {
-			goto normal_string;
-		}
-	} else {
-normal_string:
-		cell *dest = get_amxaddr(amx, params[1]);
-		cell *start = dest;
-		
-		while (c-- && *src)
-		{
-			*dest++ = *src++;
-		}
-		*dest = '\0';
-
-		return (dest - start);
+		*dest++ = *src++;
 	}
+	*dest = '\0';
+
+	return (dest - start);
 }
 
 static cell AMX_NATIVE_CALL copyc(AMX *amx, cell *params) /* 4 param */
@@ -688,23 +642,7 @@ static cell AMX_NATIVE_CALL format(AMX *amx, cell *params) /* 3 param */
 	int param = 4;
 	size_t total = 0;
 
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		if (*fmt & BCOMPAT_TRANSLATE_BITS)
-		{
-			const char *key, *def;
-			if (!translate_bcompat(amx, fmt, &key, &def))
-			{
-				goto normal_string;
-			}
-			total = atcprintf(buf, maxlen, def, amx, params, &param);
-		} else {
-			goto normal_string;
-		}
-	} else {
-normal_string:
-		total = atcprintf(buf, maxlen, fmt, amx, params, &param);
-	}
+	total = atcprintf(buf, maxlen, fmt, amx, params, &param);
 
 	if (copy)
 	{

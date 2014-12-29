@@ -1,6 +1,19 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// MySQL Module
+//
+
 #include <string.h>
-#include "sh_stack.h"
-#include "CVector.h"
+#include <sh_stack.h>
+#include <am-vector.h>
 #include "mysql2_header.h"
 
 struct QHandle
@@ -11,7 +24,7 @@ struct QHandle
 	bool isfree;
 };
 
-CVector<QHandle *> g_Handles;
+ke::Vector<QHandle *> g_Handles;
 CStack<unsigned int> g_FreeHandles;
 
 unsigned int MakeHandle(void *ptr, HandleType type, FREEHANDLE f)
@@ -26,8 +39,8 @@ unsigned int MakeHandle(void *ptr, HandleType type, FREEHANDLE f)
 		h = g_Handles[num];
 	} else {
 		h = new QHandle;
-		g_Handles.push_back(h);
-		num = static_cast<unsigned int>(g_Handles.size()) - 1;
+		g_Handles.append(h);
+		num = static_cast<unsigned int>(g_Handles.length()) - 1;
 	}
 
 	h->_ptr = ptr;
@@ -44,7 +57,7 @@ void *GetHandle(unsigned int num, HandleType type)
 		return NULL;
 
 	num--;
-	if (num >= g_Handles.size())
+	if (num >= g_Handles.length())
 		return NULL;
 
 	QHandle *h = g_Handles[num];
@@ -62,7 +75,7 @@ bool FreeHandle(unsigned int num)
 	unsigned int _num = num;
 
 	num--;
-	if (num >= g_Handles.size())
+	if (num >= g_Handles.length())
 		return false;
 
 	QHandle *h = g_Handles[num];
@@ -82,7 +95,7 @@ bool FreeHandle(unsigned int num)
 void FreeAllHandles(HandleType type)
 {
 	QHandle *q;
-	for (size_t i = 0; i < g_Handles.size(); i++)
+	for (size_t i = 0; i < g_Handles.length(); i++)
 	{
 		q = g_Handles[i];
 		if (q && !q->isfree && q->type == type)
@@ -95,7 +108,7 @@ void FreeAllHandles(HandleType type)
 void FreeHandleTable()
 {
 	QHandle *q;
-	for (size_t i = 0; i < g_Handles.size(); i++)
+	for (size_t i = 0; i < g_Handles.length(); i++)
 	{
 		q = g_Handles[i];
 		if (q && !q->isfree)

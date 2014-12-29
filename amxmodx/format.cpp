@@ -1,7 +1,15 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
 #include "amxmodx.h"
 #include "format.h"
 #include "datastructs.h"
-#include "amxmod_compat.h"
 
 //Adapted from Quake3's vsprintf
 // thanks to cybermind for linking me to this :)
@@ -52,18 +60,18 @@ const char *translate(AMX *amx, cell amxaddr, const char *key)
 			amx_cl_langs = CVAR_GET_POINTER("amx_client_languages");
 		if ( (int)amx_cl_langs->value == 0 )
 		{
-			pLangName = g_vault.get("server_language");
+			pLangName = amxmodx_language->string;
 		} else {
 			pLangName = ENTITY_KEYVALUE(GET_PLAYER_POINTER_I(g_langMngr.GetDefLang())->pEdict, "lang");
 		}
 	} else if (addr[0] == LANG_SERVER) {
-		pLangName = g_vault.get("server_language");
+		pLangName = amxmodx_language->string;
 	} else if (addr[0] >= 1 && addr[0] <= gpGlobals->maxClients) {
 		if (!amx_cl_langs)
 			amx_cl_langs = CVAR_GET_POINTER("amx_client_languages");
 		if ( (int)amx_cl_langs->value == 0 )
 		{
-			pLangName = g_vault.get("server_language");
+			pLangName = amxmodx_language->string;
 		} else {
 			pLangName = ENTITY_KEYVALUE(GET_PLAYER_POINTER_I(addr[0])->pEdict, "lang");
 		}
@@ -71,8 +79,12 @@ const char *translate(AMX *amx, cell amxaddr, const char *key)
 		get_amxstring_r(amx, amxaddr, name, 3);
 		pLangName = name;
 	}
+
 	if (!pLangName || !isalpha(pLangName[0]))
-		pLangName = "en";
+	{
+		pLangName = amxmodx_language->string;
+	}
+
 	//next parameter!
 	def = g_langMngr.GetDef(pLangName, key, status);
 			
@@ -110,21 +122,21 @@ const char *translate(AMX *amx, cell amxaddr, const char *key)
 		}
 
 		if (addr[0] != LANG_SERVER)
-			def = g_langMngr.GetDef(g_vault.get("server_language"), key, status);
+			def = g_langMngr.GetDef(amxmodx_language->string, key, status);
 		
-		if (!def && (strcmp(pLangName, "en") != 0 && strcmp(g_vault.get("server_language"), "en") != 0))
+		if (!def && (strcmp(pLangName, "en") != 0 && strcmp(amxmodx_language->string, "en") != 0))
 			def = g_langMngr.GetDef("en", key, status);
 	}
 
 	return def;
 }
 
-template <typename U>
-void AddString(U **buf_p, size_t &maxlen, const cell *string, int width, int prec)
+template <typename U, typename S>
+void AddString(U **buf_p, size_t &maxlen, const S *string, int width, int prec)
 {
 	int		size = 0;
 	U		*buf;
-	static cell nlstr[] = {'(','n','u','l','l',')','\0'};
+	static S nlstr[] = {'(','n','u','l','l',')','\0'};
 
 	buf = *buf_p;
 
@@ -634,24 +646,6 @@ reswitch:
 			}
 		case 's':
 			CHECK_ARGS(0);
-			if (amx->flags & AMX_FLAG_OLDFILE)
-			{
-				cell *addr = get_amxaddr(amx, params[arg]);
-				if (*addr & BCOMPAT_TRANSLATE_BITS)
-				{
-					const char *key, *def;
-					if (!translate_bcompat(amx, addr, &key, &def))
-					{
-						goto break_to_normal_string;
-					}
-					arg++;
-					size_t written = atcprintf(buf_p, llen, def, amx, params, &arg);
-					buf_p += written;
-					llen -= written;
-					break;
-				}
-			}
-break_to_normal_string:
 			AddString(&buf_p, llen, get_amxaddr(amx, params[arg]), width, prec);
 			arg++;
 			break;
@@ -665,12 +659,78 @@ break_to_normal_string:
 				if (!def)
 				{
 					static char buf[255];
-					snprintf(buf, sizeof(buf)-1, "ML_NOTFOUND: %s", key);
+					UTIL_Format(buf, sizeof(buf)-1, "ML_NOTFOUND: %s", key);
 					def = buf;
 				}
 				size_t written = atcprintf(buf_p, llen, def, amx, params, &arg);
 				buf_p += written;
 				llen -= written;
+				break;
+			}
+		case 'N':
+			{
+				CHECK_ARGS(0);
+				cell *addr = get_amxaddr(amx, params[arg]);
+				char buffer[255];
+				if (*addr)
+				{
+					CPlayer *player = NULL;
+
+					if (*addr >= 1 && *addr <= gpGlobals->maxClients)
+					{
+						player = GET_PLAYER_POINTER_I(*addr);
+					}
+
+					if (!player || !player->initialized)
+					{
+						LogError(amx, AMX_ERR_NATIVE, "Client index %d is invalid", *addr);
+						return 0;
+					}
+
+					const char *auth = GETPLAYERAUTHID(player->pEdict);
+					if (!auth || auth[0] == '\0')
+					{
+						auth = "STEAM_ID_PENDING";
+					}
+
+					int userid = GETPLAYERUSERID(player->pEdict);
+					UTIL_Format(buffer, sizeof(buffer), "%s<%d><%s><%s>", player->name.c_str(), userid, auth, player->team.c_str());
+				}
+				else
+				{
+					UTIL_Format(buffer, sizeof(buffer), "Console<0><Console><Console>");
+				}
+
+				AddString(&buf_p, llen, buffer, width, prec);
+				arg++;
+				break;
+			}
+		case 'n':
+			{
+				CHECK_ARGS(0);
+				cell *addr = get_amxaddr(amx, params[arg]);
+				const char *name = "Console";
+
+				if (*addr)
+				{
+					CPlayer *player = NULL;
+
+					if (*addr >= 1 && *addr <= gpGlobals->maxClients)
+					{
+						player = GET_PLAYER_POINTER_I(*addr);
+					}
+
+					if (!player || !player->initialized)
+					{
+						LogError(amx, AMX_ERR_NATIVE, "Client index %d is invalid", *addr);
+						return 0;
+					}
+
+					name = player->name.c_str();
+				}
+			
+				AddString(&buf_p, llen, name, width, prec);
+				arg++;
 				break;
 			}
 		case '%':

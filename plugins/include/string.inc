@@ -1,10 +1,15 @@
-/* Strings manipulation
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is provided as is (no warranties).
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// String Manipulation
+//
 
 #if defined _string_included
   #endinput
@@ -187,7 +192,7 @@ native formatex(output[], len, const format[], any:...);
  */
 native vformat(buffer[], len, const fmt[], vararg);
 
- /**
+/**
  * Formats a string according to the AMX Mod X format rules (see documentation).
  *
  * @note Same as vformat(), except works in normal style dynamic natives.
@@ -706,7 +711,7 @@ native strncmp(const string1[], const string2[], num, bool:ignorecase=false);
  * Backwards compatibility stock - use argbreak or argparse.
  * @deprecated			this function does not work properly.
  */
-//#pragma deprecated Use argbreak() instead
+#pragma deprecated Use argbreak() instead
 stock strbreak(const text[], Left[], leftLen, Right[], rightLen)
 {
 	return argbreak(text, Left, leftLen, Right, rightLen);
@@ -790,7 +795,7 @@ stock argbreak(const text[], left[], leftlen, right[], rightlen)
  */
 native split_string(const source[], const split[], part[], partLen);
 
- /**
+/**
  * It is basically strbreak but you have a delimiter that is more than one character in length. By Suicid3.
  *
  * @param szInput		Source input string.
@@ -826,7 +831,7 @@ stock split(const szInput[], szLeft[], pL_Max, szRight[], pR_Max, const szDelim[
 	return;
 }
 
- /**
+/**
  * Removes a path from szFilePath leaving the name of the file in szFile for a pMax length.
  *
  * @param szFilePath	String to perform search and replacements on.
@@ -846,7 +851,7 @@ stock remove_filepath(const szFilePath[], szFile[], pMax)
 	return;
 }
 
- /**
+/**
  * Replaces a contained string iteratively.
  *
  * @note Consider using replace_string() instead.

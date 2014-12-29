@@ -1,11 +1,19 @@
-#include "sdk/amxxmodule.h"
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Natural Selection Module
+//
+
+#include "amxxmodule.h"
 #include "ns.h"
-
-#include "CVector.h"
-#include "CString.h"
-
 #include "ParticleManager.h"
-
 
 void ParticleManager::ReadFile(void)
 {
@@ -18,7 +26,7 @@ void ParticleManager::ReadFile(void)
 
 	char FileName[256];
 
-	snprintf(FileName,sizeof(FileName)-1,"%s/ns.ps",MF_GetModname());
+	UTIL_Format(FileName, sizeof(FileName)-1, "%s/ns.ps", MF_GetModname());
 	FILE *fp=fopen(FileName,"r");
 
 	if (!fp)

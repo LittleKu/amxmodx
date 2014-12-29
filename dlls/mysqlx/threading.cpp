@@ -1,9 +1,21 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// MySQL Module
+//
+
 #include "amxxmodule.h"
 #include "mysql2_header.h"
 #include "threading.h"
 
 using namespace SourceMod;
-using namespace SourceHook;
 
 MainThreader g_Threader;
 ThreadWorker *g_pWorker = NULL;
@@ -131,10 +143,10 @@ void MysqlThread::SetForward(int forward)
 
 void MysqlThread::SetInfo(const char *host, const char *user, const char *pass, const char *db, int port, unsigned int max_timeout)
 {
-	m_host.assign(host);
-	m_user.assign(user);
-	m_pass.assign(pass);
-	m_db.assign(db);
+	m_host = host;
+	m_user = user;
+	m_pass = pass;
+	m_db = db;
 	m_max_timeout = max_timeout;
 	m_port = port;
 	m_qrInfo.queue_time = gpGlobals->time;
@@ -142,25 +154,25 @@ void MysqlThread::SetInfo(const char *host, const char *user, const char *pass, 
 
 void MysqlThread::SetCharacterSet(const char *charset)
 {
-	m_charset.assign(charset);
+	m_charset = charset;
 }
 
 void MysqlThread::SetQuery(const char *query)
 {
-	m_query.assign(query);
+	m_query = query;
 }
 
 void MysqlThread::RunThread(IThreadHandle *pHandle)
 {
 	DatabaseInfo info;
 
-	info.database = m_db.c_str();
-	info.pass = m_pass.c_str();
-	info.user = m_user.c_str();
-	info.host = m_host.c_str();
+	info.database = m_db.chars();
+	info.pass = m_pass.chars();
+	info.user = m_user.chars();
+	info.host = m_host.chars();
 	info.port = m_port;
 	info.max_timeout = m_max_timeout;
-	info.charset = m_charset.c_str();
+	info.charset = m_charset.chars();
 
 	float save_time = m_qrInfo.queue_time;
 
@@ -178,7 +190,7 @@ void MysqlThread::RunThread(IThreadHandle *pHandle)
 	else 
 	{
 		m_qrInfo.connect_success = true;
-		pQuery = pDatabase->PrepareQuery(m_query.c_str());
+		pQuery = pDatabase->PrepareQuery(m_query.chars());
 		if (!pQuery->Execute2(&m_qrInfo.amxinfo.info, m_qrInfo.amxinfo.error, 254))
 		{
 			m_qrInfo.query_success = false;
@@ -202,8 +214,8 @@ void MysqlThread::RunThread(IThreadHandle *pHandle)
 	} 
 
 	m_qrInfo.amxinfo.pQuery = NULL;
-	m_qrInfo.amxinfo.opt_ptr = new char[m_query.size() + 1];
-	strcpy(m_qrInfo.amxinfo.opt_ptr, m_query.c_str());
+	m_qrInfo.amxinfo.opt_ptr = new char[m_query.length() + 1];
+	strcpy(m_qrInfo.amxinfo.opt_ptr, m_query.chars());
 
 	if (pDatabase)
 	{
@@ -427,7 +439,7 @@ bool AtomicResult::FieldNameToNum(const char *name, unsigned int *columnId)
 	for (unsigned int i=0; i<m_FieldCount; i++)
 	{
 		assert(m_Table[i] != NULL);
-		if (strcmp(m_Table[i]->c_str(), name) == 0)
+		if (strcmp(m_Table[i]->chars(), name) == 0)
 		{
 			if (columnId)
 			{
@@ -447,7 +459,7 @@ const char *AtomicResult::FieldNumToName(unsigned int num)
 
 	assert(m_Table[num] != NULL);
 
-	return m_Table[num]->c_str();
+	return m_Table[num]->chars();
 }
 
 double AtomicResult::GetDouble(unsigned int columnId)
@@ -488,7 +500,7 @@ const char *AtomicResult::GetString(unsigned int columnId)
 
 	assert(m_Table[idx] != NULL);
 
-	return m_Table[idx]->c_str();
+	return m_Table[idx]->chars();
 }
 
 IResultRow *AtomicResult::GetRow()
@@ -538,11 +550,11 @@ void AtomicResult::CopyFrom(IResultSet *rs)
 	size_t newTotal = (m_RowCount * m_FieldCount) + m_FieldCount;
 	if (newTotal > m_AllocSize)
 	{
-		SourceHook::String **table = new SourceHook::String *[newTotal];
-		memset(table, 0, newTotal * sizeof(SourceHook::String *));
+		ke::AString **table = new ke::AString *[newTotal];
+		memset(table, 0, newTotal * sizeof(ke::AString *));
 		if (m_Table)
 		{
-			memcpy(table, m_Table, m_AllocSize * sizeof(SourceHook::String *));
+			memcpy(table, m_Table, m_AllocSize * sizeof(ke::AString *));
 			delete [] m_Table;
 		}
 		m_Table = table;
@@ -553,9 +565,9 @@ void AtomicResult::CopyFrom(IResultSet *rs)
 	{
 		if (m_Table[i])
 		{
-			m_Table[i]->assign(rs->FieldNumToName(i));
+			*m_Table[i] = rs->FieldNumToName(i);
 		} else {
-			m_Table[i] = new SourceHook::String(rs->FieldNumToName(i));
+			m_Table[i] = new ke::AString(rs->FieldNumToName(i));
 		}
 	}
 
@@ -568,9 +580,9 @@ void AtomicResult::CopyFrom(IResultSet *rs)
 		{
 			if (m_Table[idx])
 			{
-				m_Table[idx]->assign(row->GetString(i));
+				*m_Table[idx] = row->GetString(i);
 			} else {
-				m_Table[idx] = new SourceHook::String(row->GetString(i));
+				m_Table[idx] = new ke::AString(row->GetString(i));
 			}
 		}
 		rs->NextRow();

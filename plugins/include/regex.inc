@@ -1,31 +1,15 @@
-/**
- * Regular Expressions API
- *  By the AMX Mod X Development Team
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at
- * your option) any later version.
- *
- * this program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- * In addition, as a special exception, the author gives permission to
- * link the code of this program with the Half-Life Game Engine ("HL
- * Engine") and Modified Game Libraries ("MODs") developed by Valve,
- * L.L.C ("Valve"). You must obey the GNU General Public License in all
- * respects for all of the code used other than the HL Engine and MODs
- * from Valve. If you modify this file, you may extend this exception
- * to your version of the file, but you are not obligated to do so. If
- * you do not wish to do so, delete this exception statement from your
- * version.
- */
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Regular Expressions API
+//
 
 #if defined _regex_included
 	#endinput
@@ -321,16 +305,12 @@ native Regex:regex_match_all(const string[], const pattern[], flags = 0, error[]
 stock regex_match_simple(const str[], const pattern[], flags = 0, error[]= "", maxLen = 0, &errcode = 0)
 {
 	new Regex:regex = regex_compile_ex(pattern, flags, error, maxLen, errcode);
-
-	if (regex < 0)
+	if (regex < REGEX_OK)
 	{
 		return -1;
 	}
-
-	new substrings = regex_match_c(regex, str);
-
+	new substrings = regex_match_c(str, regex);
 	regex_free(regex);
-
 	return substrings;
 }
 

@@ -1,32 +1,11 @@
-/* AMX Mod X 
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include "amxmodx.h"
 #include "CMenu.h"
@@ -310,7 +289,7 @@ bool Menu::Display(int player, page_t page)
 		return false;
 
 	static char buffer[2048];
-	int len = _snprintf(buffer, sizeof(buffer)-1, "%s", str);
+	int len = UTIL_Format(buffer, sizeof(buffer)-1, "%s", str);
 
 	CPlayer *pPlayer = GET_PLAYER_POINTER_I(player);
 
@@ -363,14 +342,14 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 	if (items_per_page && (pages != 1))
 	{
 		if (m_AutoColors)
-			_snprintf(buffer, sizeof(buffer)-1, "\\y%s %d/%d\n\\w\n", m_Title.c_str(), page + 1, pages);
+			UTIL_Format(buffer, sizeof(buffer)-1, "\\y%s %d/%d\n\\w\n", m_Title.c_str(), page + 1, pages);
 		else
-			_snprintf(buffer, sizeof(buffer)-1, "%s %d/%d\n\n", m_Title.c_str(), page + 1, pages);
+			UTIL_Format(buffer, sizeof(buffer)-1, "%s %d/%d\n\n", m_Title.c_str(), page + 1, pages);
 	} else {
 		if (m_AutoColors)
-			_snprintf(buffer, sizeof(buffer)-1, "\\y%s\n\\w\n", m_Title.c_str());
+			UTIL_Format(buffer, sizeof(buffer)-1, "\\y%s\n\\w\n", m_Title.c_str());
 		else
-			_snprintf(buffer, sizeof(buffer)-1, "%s\n\n", m_Title.c_str());
+			UTIL_Format(buffer, sizeof(buffer)-1, "%s\n\n", m_Title.c_str());
 	}
 	
 	m_Text.append(buffer);
@@ -467,22 +446,22 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 
 		if (pItem->isBlank)
 		{
-			_snprintf(buffer, sizeof(buffer)-1, "%s\n", pItem->name.c_str());
+			UTIL_Format(buffer, sizeof(buffer)-1, "%s\n", pItem->name.c_str());
 		}
 		else if (enabled)
 		{
 			if (m_AutoColors) 
 			{
-				_snprintf(buffer, sizeof(buffer)-1, "%s%d.\\w %s\n", m_ItemColor.c_str(),option_display, pItem->name.c_str());
+				UTIL_Format(buffer, sizeof(buffer)-1, "%s%d.\\w %s\n", m_ItemColor.c_str(),option_display, pItem->name.c_str());
 			} else {
-				_snprintf(buffer, sizeof(buffer)-1, "%d. %s\n", option_display, pItem->name.c_str());
+				UTIL_Format(buffer, sizeof(buffer)-1, "%d. %s\n", option_display, pItem->name.c_str());
 			}
 		} else {
 			if (m_AutoColors)
 			{
-				_snprintf(buffer, sizeof(buffer)-1, "\\d%d. %s\n\\w", option_display, pItem->name.c_str());
+				UTIL_Format(buffer, sizeof(buffer)-1, "\\d%d. %s\n\\w", option_display, pItem->name.c_str());
 			} else {
-				_snprintf(buffer, sizeof(buffer)-1, "#. %s\n", pItem->name.c_str());
+				UTIL_Format(buffer, sizeof(buffer)-1, "#. %s\n", pItem->name.c_str());
 			}
 		}
 		slots++;
@@ -524,14 +503,14 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 				keys |= (1<<option++);
 				if (m_AutoColors)
 				{
-					_snprintf(buffer, 
+					UTIL_Format(buffer, 
 						sizeof(buffer)-1, 
 						"%s%d. \\w%s\n", 
 						m_ItemColor.c_str(), 
 						option == 10 ? 0 : option, 
 						m_OptNames[abs(MENU_BACK)].c_str());
 				} else {
-					_snprintf(buffer, 
+					UTIL_Format(buffer, 
 						sizeof(buffer)-1, 
 						"%d. %s\n", 
 						option == 10 ? 0 : option, 
@@ -541,13 +520,13 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 				option++;
 				if (m_AutoColors)
 				{
-					_snprintf(buffer,
+					UTIL_Format(buffer,
 						sizeof(buffer)-1,
 						"\\d%d. %s\n\\w",
 						option == 10 ? 0 : option,
 						m_OptNames[abs(MENU_BACK)].c_str());
 				} else {
-					_snprintf(buffer, sizeof(buffer)-1, "#. %s\n", m_OptNames[abs(MENU_BACK)].c_str());
+					UTIL_Format(buffer, sizeof(buffer)-1, "#. %s\n", m_OptNames[abs(MENU_BACK)].c_str());
 				}
 			}
 			m_Text.append(buffer);
@@ -557,14 +536,14 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 				keys |= (1<<option++);
 				if (m_AutoColors)
 				{
-					_snprintf(buffer, 
+					UTIL_Format(buffer, 
 						sizeof(buffer)-1, 
 						"%s%d. \\w%s\n", 
 						m_ItemColor.c_str(), 
 						option == 10 ? 0 : option, 
 						m_OptNames[abs(MENU_MORE)].c_str());
 				} else {
-					_snprintf(buffer, 
+					UTIL_Format(buffer, 
 						sizeof(buffer)-1, 
 						"%d. %s\n", 
 						option == 10 ? 0 : option, 
@@ -574,13 +553,13 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 				option++;
 				if (m_AutoColors)
 				{
-					_snprintf(buffer,
+					UTIL_Format(buffer,
 						sizeof(buffer)-1,
 						"\\d%d. %s\n\\w",
 						option == 10 ? 0 : option,
 						m_OptNames[abs(MENU_MORE)].c_str());
 				} else {
-					_snprintf(buffer, sizeof(buffer)-1, "#. %s\n", m_OptNames[abs(MENU_MORE)].c_str());
+					UTIL_Format(buffer, sizeof(buffer)-1, "#. %s\n", m_OptNames[abs(MENU_MORE)].c_str());
 				}
 			}
 			m_Text.append(buffer);
@@ -599,14 +578,14 @@ const char *Menu::GetTextString(int player, page_t page, int &keys)
 		keys |= (1<<option++);
 		if (m_AutoColors)
 		{
-			_snprintf(buffer, 
+			UTIL_Format(buffer, 
 				sizeof(buffer)-1, 
 				"%s%d. \\w%s\n", 
 				m_ItemColor.c_str(), 
 				option == 10 ? 0 : option, 
 				m_OptNames[abs(MENU_EXIT)].c_str());
 		} else {
-			_snprintf(buffer, 
+			UTIL_Format(buffer, 
 				sizeof(buffer)-1, 
 				"%d. %s\n", 
 				option == 10 ? 0 : option, 

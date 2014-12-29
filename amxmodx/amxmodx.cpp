@@ -1,33 +1,11 @@
-/* AMX Mod X 
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include <time.h>
 #include "amxmodx.h"
@@ -154,6 +132,7 @@ static cell AMX_NATIVE_CALL engclient_print(AMX *amx, cell *params) /* 3 param *
 {
 	int len = 0;
 	char *msg;
+	PRINT_TYPE type = (PRINT_TYPE)params[2];
 	
 	if (params[1] == 0)
 	{
@@ -161,13 +140,13 @@ static cell AMX_NATIVE_CALL engclient_print(AMX *amx, cell *params) /* 3 param *
 		{
 			CPlayer* pPlayer = GET_PLAYER_POINTER_I(i);
 			
-			if (pPlayer->ingame)
+			if ((type == print_console  && pPlayer->initialized) || pPlayer->ingame)
 			{
 				g_langMngr.SetDefLang(i);
 				msg = format_amxstring(amx, params, 3, len);
 				msg[len++] = '\n';
 				msg[len] = 0;
-				CLIENT_PRINT(pPlayer->pEdict, (PRINT_TYPE)(int)params[2], msg);
+				CLIENT_PRINT(pPlayer->pEdict, type, msg);
 			}
 		}
 	} else {
@@ -181,13 +160,13 @@ static cell AMX_NATIVE_CALL engclient_print(AMX *amx, cell *params) /* 3 param *
 		
 		CPlayer* pPlayer = GET_PLAYER_POINTER_I(index);
 		
-		if (pPlayer->ingame)
+		if ((type == print_console  && pPlayer->initialized) || pPlayer->ingame)
 		{
 			g_langMngr.SetDefLang(index);
 			msg = format_amxstring(amx, params, 3, len);
 			msg[len++] = '\n';
 			msg[len] = 0;
-			CLIENT_PRINT(pPlayer->pEdict, (PRINT_TYPE)(int)params[2], msg);
+			CLIENT_PRINT(pPlayer->pEdict, type, msg);
 		}
 	}
 	
@@ -689,10 +668,12 @@ static cell AMX_NATIVE_CALL show_dhudmessage(AMX *amx, cell *params) /* 2 param 
 static cell AMX_NATIVE_CALL get_user_name(AMX *amx, cell *params) /* 3 param */
 {
 	int index = params[1];
-	
-	return set_amxstring_utf8(amx, params[2], (index < 1 || index > gpGlobals->maxClients) ? 
-			hostname->string : 
-			g_players[index].name.c_str(), g_players[index].name.size(), params[3] + 1);
+	int maxlen = params[3] + 1; // EOS.
+
+	if (index < 1 || index > gpGlobals->maxClients)
+		return set_amxstring_utf8(amx, params[2], hostname->string, strlen(hostname->string), maxlen);
+	else
+		return set_amxstring_utf8(amx, params[2], g_players[index].name.c_str(), g_players[index].name.size(), maxlen);
 }
 
 static cell AMX_NATIVE_CALL get_user_index(AMX *amx, cell *params) /* 1 param */
@@ -1272,6 +1253,58 @@ static cell AMX_NATIVE_CALL get_user_team(AMX *amx, cell *params) /* 3 param */
 
 static cell AMX_NATIVE_CALL show_menu(AMX *amx, cell *params) /* 3 param */
 {
+	// If show_menu is called from within a newmenu callback upon receiving MENU_EXIT
+	// it is possible for this native to recurse. We need to close newmenus right away
+	// because the recursive call would otherwise modify/corrupt the static get_amxstring
+	// buffer mid execution. This will either display incorrect text or result in UTIL_ShowMenu
+	// running into an infinite loop.
+	int index = params[1];
+	if (index == 0)
+	{
+		for (int i = 1; i <= gpGlobals->maxClients; ++i)
+		{
+			CPlayer* pPlayer = GET_PLAYER_POINTER_I(i);
+
+			if (pPlayer->ingame)
+			{
+				pPlayer->keys = 0;
+				pPlayer->menu = 0;
+
+				// Fire newmenu callback so closing it can be handled by the plugin
+				if (Menu *pMenu = get_menu_by_id(pPlayer->newmenu))
+					pMenu->Close(pPlayer->index);
+
+				UTIL_FakeClientCommand(pPlayer->pEdict, "menuselect", "10", 0);
+			}
+		}
+	}
+	else
+	{
+		if (index < 1 || index > gpGlobals->maxClients)
+		{
+			LogError(amx, AMX_ERR_NATIVE, "Invalid player id %d", index);
+			return 0;
+		}
+
+		CPlayer* pPlayer = GET_PLAYER_POINTER_I(index);
+
+		if (pPlayer->ingame)
+		{
+			pPlayer->keys = 0;
+			pPlayer->menu = 0;
+
+			// Fire newmenu callback so closing it can be handled by the plugin
+			if (Menu *pMenu = get_menu_by_id(pPlayer->newmenu))
+				pMenu->Close(pPlayer->index);
+
+			UTIL_FakeClientCommand(pPlayer->pEdict, "menuselect", "10", 0);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
 	int ilen = 0, ilen2 = 0;
 	char *sMenu = get_amxstring(amx, params[3], 0, ilen);
 	char *lMenu = get_amxstring(amx, params[5], 1, ilen2);
@@ -1287,7 +1320,7 @@ static cell AMX_NATIVE_CALL show_menu(AMX *amx, cell *params) /* 3 param */
 	int keys = params[2];
 	int time = params[4];
 	
-	if (params[1] == 0)
+	if (index == 0)
 	{
 		for (int i = 1; i <= gpGlobals->maxClients; ++i)
 		{
@@ -1295,15 +1328,6 @@ static cell AMX_NATIVE_CALL show_menu(AMX *amx, cell *params) /* 3 param */
 
 			if (pPlayer->ingame)
 			{
-				pPlayer->keys = 0;
-				pPlayer->menu = 0;
-
-				// Fire newmenu callback so closing it can be handled by the plugin
-				if (Menu *pMenu = get_menu_by_id(pPlayer->newmenu))
-					pMenu->Close(pPlayer->index);
-				
-				UTIL_FakeClientCommand(pPlayer->pEdict, "menuselect", "10", 0);
-
 				pPlayer->keys = keys;
 				pPlayer->menu = menuid;
 				pPlayer->vgui = false;
@@ -1317,40 +1341,20 @@ static cell AMX_NATIVE_CALL show_menu(AMX *amx, cell *params) /* 3 param */
 				UTIL_ShowMenu(pPlayer->pEdict, keys, time, sMenu, ilen);
 			}
 		}
-	} else {
-		int index = params[1];
-		
-		if (index < 1 || index > gpGlobals->maxClients)
-		{
-			LogError(amx, AMX_ERR_NATIVE, "Invalid player id %d", index);
-			return 0;
-		}
-		
+	} else {		
 		CPlayer* pPlayer = GET_PLAYER_POINTER_I(index);
 
-		if (pPlayer->ingame)
-		{
-			pPlayer->keys = 0;
-			pPlayer->menu = 0;
+		pPlayer->keys = keys;
+		pPlayer->menu = menuid;
+		pPlayer->vgui = false;			
 
-			// Fire newmenu callback so closing it can be handled by the plugin
-			if (Menu *pMenu = get_menu_by_id(pPlayer->newmenu))
-				pMenu->Close(pPlayer->index);
-
-			UTIL_FakeClientCommand(pPlayer->pEdict, "menuselect", "10", 0);
-
-			pPlayer->keys = keys;
-			pPlayer->menu = menuid;
-			pPlayer->vgui = false;			
-
-			if (time == -1)
-				pPlayer->menuexpire = INFINITE;
-			else
-				pPlayer->menuexpire = gpGlobals->time + static_cast<float>(time);
+		if (time == -1)
+			pPlayer->menuexpire = INFINITE;
+		else
+			pPlayer->menuexpire = gpGlobals->time + static_cast<float>(time);
 			
-			pPlayer->page = 0;
-			UTIL_ShowMenu(pPlayer->pEdict, keys, time, sMenu, ilen);
-		}
+		pPlayer->page = 0;
+		UTIL_ShowMenu(pPlayer->pEdict, keys, time, sMenu, ilen);
 	}
 	
 	return 1;
@@ -1864,18 +1868,6 @@ static cell AMX_NATIVE_CALL server_cmd(AMX *amx, cell *params) /* 1 param */
 	g_langMngr.SetDefLang(LANG_SERVER);
 	char* cmd = format_amxstring(amx, params, 1, len);
 
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		if (strncmp("meta ",cmd,5)==0)
-		{
-			return len+1;
-		}
-		if (strncmp("quit", cmd,4)==0)
-		{
-			return len+1;
-		}
-	}
-	
 	cmd[len++] = '\n';
 	cmd[len] = 0;
 	
@@ -1934,19 +1926,6 @@ static cell AMX_NATIVE_CALL get_cvar_string(AMX *amx, cell *params) /* 3 param *
 	int ilen;
 	char* sptemp = get_amxstring(amx, params[1], 0, ilen);
 
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		/* :HACKHACK: Pretend we're invisible to old plugins for backward compatibility */
-		char *cvar = sptemp;
-		for (unsigned int i=0; i<5; i++)
-		{
-			if (strcmp(cvar, invis_cvar_list[i]) == 0)
-			{
-				return 0;
-			}
-		}
-	}
-	
 	const char *value = CVAR_GET_STRING(sptemp);
 	return set_amxstring_utf8(amx, params[2], value, strlen(value), params[3] + 1); // + EOS
 }
@@ -1969,19 +1948,6 @@ static cell AMX_NATIVE_CALL get_cvar_float(AMX *amx, cell *params) /* 1 param */
 {
 	int ilen;
 
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		/* :HACKHACK: Pretend we're invisible to old plugins for backward compatibility */
-		char *cvar = get_amxstring(amx, params[1], 0, ilen);
-		for (unsigned int i=0; i<5; i++)
-		{
-			if (strcmp(cvar, invis_cvar_list[i]) == 0)
-			{
-				return 0;
-			}
-		}
-	}
-
 	REAL pFloat = CVAR_GET_FLOAT(get_amxstring(amx, params[1], 0, ilen));
 	
 	return amx_ftoc(pFloat);
@@ -1996,7 +1962,7 @@ static cell AMX_NATIVE_CALL set_pcvar_float(AMX *amx, cell *params)
 		return 0;
 	}
 
-	snprintf(CVarTempBuffer,sizeof(CVarTempBuffer)-1,"%f",amx_ctof(params[2]));
+	UTIL_Format(CVarTempBuffer,sizeof(CVarTempBuffer)-1,"%f",amx_ctof(params[2]));
 	(*g_engfuncs.pfnCvar_DirectSet)(ptr, &CVarTempBuffer[0]);
 	return 1;
 }
@@ -2024,18 +1990,6 @@ static cell AMX_NATIVE_CALL get_pcvar_num(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL get_cvar_num(AMX *amx, cell *params) /* 1 param */
 {
 	int ilen;
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		/* :HACKHACK: Pretend we're invisible to old plugins for backward compatibility */
-		char *cvar = get_amxstring(amx, params[1], 0, ilen);
-		for (unsigned int i=0; i<5; i++)
-		{
-			if (strcmp(cvar, invis_cvar_list[i]) == 0)
-			{
-				return 0;
-			}
-		}
-	}
 	return (int)CVAR_GET_FLOAT(get_amxstring(amx, params[1], 0, ilen));
 }
 
@@ -2048,7 +2002,7 @@ static cell AMX_NATIVE_CALL set_pcvar_num(AMX *amx, cell *params)
 		return 0;
 	}
 
-	snprintf(CVarTempBuffer,sizeof(CVarTempBuffer)-1,"%d",params[2]);
+	UTIL_Format(CVarTempBuffer,sizeof(CVarTempBuffer)-1,"%d",params[2]);
 	(*g_engfuncs.pfnCvar_DirectSet)(ptr, &CVarTempBuffer[0]);
 
 	return 1;
@@ -2332,7 +2286,7 @@ static cell AMX_NATIVE_CALL get_players(AMX *amx, cell *params) /* 4 param */
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
 		CPlayer* pPlayer = GET_PLAYER_POINTER_I(i);
-		if (pPlayer->ingame)
+		if (pPlayer->ingame || ((flags & 256) && pPlayer->initialized))
 		{
 			if (pPlayer->IsAlive() ? (flags & 2) : (flags & 1))
 				continue;
@@ -2388,7 +2342,7 @@ static cell AMX_NATIVE_CALL find_player(AMX *amx, cell *params) /* 1 param */
 	{
 		CPlayer* pPlayer = GET_PLAYER_POINTER_I(i);
 		
-		if (pPlayer->ingame)
+		if (pPlayer->ingame || ((flags & 4096) && pPlayer->initialized))
 		{
 			if (pPlayer->IsAlive() ? (flags & 64) : (flags & 32))
 				continue;
@@ -2624,6 +2578,18 @@ static cell AMX_NATIVE_CALL change_task(AMX *amx, cell *params)
 	return g_tasksMngr.changeTasks(params[1], params[3] ? 0 : amx, flNewTime);
 }
 
+static cell AMX_NATIVE_CALL change_level(AMX *amx, cell *params)
+{
+	int length;
+	const char* new_map = get_amxstring(amx, params[1], 0, length);
+
+	// Same as calling "changelevel" command but will trigger "server_changelevel" AMXX forward as well.
+	// Filling second param will call "changelevel2" command, but this is not usable in multiplayer game. 
+	g_pEngTable->pfnChangeLevel(new_map, NULL);
+
+	return 1;
+}
+
 static cell AMX_NATIVE_CALL task_exists(AMX *amx, cell *params) /* 1 param */
 {
 	return g_tasksMngr.taskExists(params[1], params[2] ? 0 : amx);
@@ -2632,18 +2598,6 @@ static cell AMX_NATIVE_CALL task_exists(AMX *amx, cell *params) /* 1 param */
 static cell AMX_NATIVE_CALL cvar_exists(AMX *amx, cell *params) /* 1 param */
 {
 	int ilen;
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		/* :HACKHACK: Pretend we're invisible to old plugins for backward compatibility */
-		char *cvar = get_amxstring(amx, params[1], 0, ilen);
-		for (unsigned int i=0; i<5; i++)
-		{
-			if (strcmp(cvar, invis_cvar_list[i]) == 0)
-			{
-				return 0;
-			}
-		}
-	}
 	return (CVAR_GET_POINTER(get_amxstring(amx, params[1], 0, ilen)) ? 1 : 0);
 }
 
@@ -3180,19 +3134,6 @@ static cell AMX_NATIVE_CALL get_cvar_flags(AMX *amx, cell *params)
 {
 	int ilen;
 	char* sCvar = get_amxstring(amx, params[1], 0, ilen);
-
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		/* :HACKHACK: Pretend we're invisible to old plugins for backward compatibility */
-		char *cvar = sCvar;
-		for (unsigned int i=0; i<5; i++)
-		{
-			if (strcmp(cvar, invis_cvar_list[i]) == 0)
-			{
-				return 0;
-			}
-		}
-	}
 
 	cvar_t* pCvar = CVAR_GET_POINTER(sCvar);
 	
@@ -4405,21 +4346,6 @@ static cell AMX_NATIVE_CALL CreateMultiForward(AMX *amx, cell *params)
 	return registerForwardC(funcname, static_cast<ForwardExecType>(params[2]), ps, count-2);
 }
 
-static cell AMX_NATIVE_CALL CreateMultiForwardEx(AMX *amx, cell *params)
-{
-	int len;
-	char *funcname = get_amxstring(amx, params[1], 0, len);
-
-	cell ps[FORWARD_MAX_PARAMS];
-	cell count = params[0] / sizeof(cell);
-	for (cell i=4; i<=count; i++)
-	{
-		ps[i-4] = *get_amxaddr(amx, params[i]);
-	}
-
-	return registerForwardC(funcname, static_cast<ForwardExecType>(params[2]), ps, count-3, params[3]);
-}
-
 static cell AMX_NATIVE_CALL CreateOneForward(AMX *amx, cell *params)
 {
 	CPluginMngr::CPlugin *p = g_plugins.findPlugin(params[1]);
@@ -4928,6 +4854,7 @@ AMX_NATIVE_INFO amxmodx_Natives[] =
 	{"callfunc_push_str",		callfunc_push_str},
 	{"callfunc_push_array",		callfunc_push_array},
 	{"change_task",				change_task},
+	{"change_level",			change_level},
 	{"client_cmd",				client_cmd},
 	{"client_print",			client_print},
 	{"client_print_color",		client_print_color},
@@ -5103,7 +5030,6 @@ AMX_NATIVE_INFO amxmodx_Natives[] =
 	{"CreateHudSyncObj",		CreateHudSyncObj},
 	{"CreateLangKey",			CreateLangKey},
 	{"CreateMultiForward",		CreateMultiForward},
-	{"CreateMultiForwardEx",	CreateMultiForwardEx},
 	{"CreateOneForward",		CreateOneForward},
 	{"DestroyForward",			DestroyForward},
 	{"ExecuteForward",			ExecuteForward},

@@ -1,43 +1,27 @@
-/* Ham Sandwich
- *   Copyright 2007-2014
- *   By the AMX Mod X Development Team
- *
- *  Ham Sandwich is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation; either version 2 of the License, or (at
- *  your option) any later version.
- *
- *  Ham Sandwich is distributed in the hope that it will be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Ham Sandwich; if not, write to the Free Software Foundation,
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *  In addition, as a special exception, the author gives permission to
- *  link the code of Ham Sandwich with the Half-Life Game Engine ("HL
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve,
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all
- *  respects for all of the code used other than the HL Engine and MODs
- *  from Valve. If you modify this file, you may extend this exception
- *  to your version of the file, but you are not obligated to do so. If
- *  you do not wish to do so, delete this exception statement from your
- *  version.
- */
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Ham Sandwich Module
+//
+
 #include "amxxmodule.h"
 
 #include "offsets.h"
 #include "ham_utils.h"
 #include "hooklist.h"
-
-#include "CVector.h"
 #include "forward.h"
 #include "hook.h"
-#include "CString.h"
+#include <am-vector.h>
+#include <am-string.h>
 
-extern CVector<Hook *> hooks[HAM_LAST_ENTRY_DONT_USE_ME_LOL];
+extern ke::Vector<Hook *> hooks[HAM_LAST_ENTRY_DONT_USE_ME_LOL];
 
 void FailPlugin(AMX *amx, int id, int err, const char *reason);
 
@@ -49,13 +33,9 @@ inline void *GetFunction(void *pthis, int id, bool &istramp)
 	void *func=GetVTableEntry(pthis, hooklist[id].vtid, Offsets.GetBase());
 
 	// Check to see if it's a trampoline
-	CVector<Hook *>::iterator end=hooks[id].end();
-
-	for (CVector<Hook *>::iterator i=hooks[id].begin();
-		 i!=end;
-		 ++i)
+	for (size_t i = 0; i < hooks[id].length(); ++i)
 	{
-		if (func==(*i)->tramp)
+		if (func == hooks[id].at(i)->tramp)
 		{
 			istramp=true;
 			return func;
@@ -72,23 +52,17 @@ inline void *_GetFunction(void *pthis, int id)
 	void *func=ivtbl[hooklist[id].vtid];
 
 	// Iterate through the hooks for the id, see if the function is found
-	CVector<Hook *>::iterator end=hooks[id].end();
-
-	for (CVector<Hook *>::iterator i=hooks[id].begin();
-		 i!=end;
-		 ++i)
+	for (size_t i = 0; i < hooks[id].length(); ++i)
 	{
 		// If the function points to a trampoline, then return the original
 		// function.
-		if (func==(*i)->tramp)
+		if (func == hooks[id].at(i)->tramp)
 		{
-			printf("Func=0x%08X\n",reinterpret_cast<unsigned int>((*i)->func));
-			return (*i)->func;
+			return hooks[id].at(i)->func;
 		}
 	}
 
 	// this is an original function
-	printf("Func=0x%08X\n",reinterpret_cast<unsigned int>(func));
 	return func;
 }
 
@@ -1002,15 +976,11 @@ cell Call_Void_Vector_Entvar_Entvar_Float_Int_Int(AMX *amx, cell *params)
 	entvars_t *ev4=&(INDEXENT_NEW(id4)->v);
 	entvars_t *ev5=&(INDEXENT_NEW(id5)->v);
 
-	printf("%.2f %.2f %.2f, %d, %d, %f, %d %d\n", v3.x, v3.y, v3.z, id4, id5, f6, i7, i8 );
-
 #if defined(_WIN32)
 	reinterpret_cast<void (__fastcall *)(void *, int, Vector, entvars_t *, entvars_t *, float, int, int)>(__func)(pv, 0, v3, ev4, ev5, f6, i7, i8);
 #elif defined(__linux__) || defined(__APPLE__)
 	reinterpret_cast<void (*)(void *, Vector, entvars_t *, entvars_t *, float, int, int)>(__func)(pv, v3, ev4, ev5, f6, i7, i8);
 #endif
-
-	printf("%.2f %.2f %.2f, %d, %d, %f, %d %d\n", v3.x, v3.y, v3.z, id4, id5, f6, i7, i8);
 
 	return 1;
 }

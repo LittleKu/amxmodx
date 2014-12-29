@@ -1,3 +1,16 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Engine Module
+//
+
 #include "engine.h"
 
 BOOL CheckForPublic(const char *publicname);
@@ -15,11 +28,11 @@ void ClearHooks()
 {
 	size_t i;
 
-	for (i=0; i<Touches.size(); i++)
+	for (i=0; i<Touches.length(); i++)
 		delete Touches[i];
-	for (i=0; i<Impulses.size(); i++)
+	for (i=0; i<Impulses.length(); i++)
 		delete Impulses[i];
-	for (i=0; i<Thinks.size(); i++)
+	for (i=0; i<Thinks.length(); i++)
 		delete Thinks[i];
 
 	Touches.clear();

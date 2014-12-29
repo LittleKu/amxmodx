@@ -1,5 +1,17 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Engine Module
+//
+
 #include "engine.h"
-#include "amxmod_compat.h"
 
 struct usercmd_s *g_cmd;
 struct PlayerInfo plinfo[33];
@@ -9,8 +21,7 @@ int g_CameraCount;
 
 TraceResult g_tr;
 
-#define	BUFFERSIZE	1023
-char g_buffer[BUFFERSIZE + 1];
+char g_buffer[1024];
 
 void UTIL_SetSize(edict_t *pev, const Vector &vecMin, const Vector &vecMax)
 {
@@ -32,11 +43,11 @@ static cell AMX_NATIVE_CALL register_think(AMX *amx, cell *params)
 
 	EntClass *p = new EntClass;
 	const char *clsname = MF_GetAmxString(amx, params[1], 0, &len);
-	p->Class.assign(clsname);
+	p->Class = clsname;
 
 	p->Forward = MF_RegisterSPForwardByName(amx, MF_GetAmxString(amx, params[2], 0, &len), FP_CELL, FP_DONE);
 
-	Thinks.push_back(p);
+	Thinks.append(p);
 
 	if (!g_pFunctionTable->pfnThink)
 		g_pFunctionTable->pfnThink=Think;
@@ -53,7 +64,7 @@ static cell AMX_NATIVE_CALL register_impulse(AMX *amx, cell *params)
 
 	p->Forward = MF_RegisterSPForwardByName(amx, MF_GetAmxString(amx, params[2], 0, &len), FP_CELL, FP_CELL, FP_DONE);
 
-	Impulses.push_back(p);
+	Impulses.append(p);
 
 	if (!g_pFunctionTable->pfnCmdStart)
 		g_pFunctionTable->pfnCmdStart=CmdStart;
@@ -71,19 +82,19 @@ static cell AMX_NATIVE_CALL register_touch(AMX *amx, cell *params)
 	Touch *p = new Touch;
 
 	if (!strlen(Toucher) || strcmp(Toucher, "*")==0) {
-		p->Toucher.assign("");
+		p->Toucher.setVoid();
 	} else {
-		p->Toucher.assign(Toucher);
+		p->Toucher = Toucher;
 	}
 	if (!strlen(Touched) || strcmp(Touched, "*")==0) {
-		p->Touched.assign("");
+		p->Touched.setVoid();
 	} else {
-		p->Touched.assign(Touched);
+		p->Touched = Touched;
 	}
 
 	p->Forward = MF_RegisterSPForwardByName(amx, MF_GetAmxString(amx, params[3], 2, &len), FP_CELL, FP_CELL, FP_DONE);
 
-	Touches.push_back(p);
+	Touches.append(p);
 
 	if (!g_pFunctionTable->pfnTouch)
 		g_pFunctionTable->pfnTouch=pfnTouch;
@@ -98,32 +109,10 @@ static cell AMX_NATIVE_CALL halflife_time(AMX *amx, cell *params)
 	return amx_ftoc(fVal);
 }
 
-//This is not exposed, and is only provided as a compatibility helper.
-static cell AMX_NATIVE_CALL RadiusDamage_AMXMod(AMX *amx, cell *params)
-{
-	int ent = params[1];
-	CHECK_ENTITY_SIMPLE(ent);
-	edict_t* pEntity = INDEXENT(ent);
-	float dmg = amx_ctof(params[2]);
-	cell *vInput = MF_GetAmxAddr(amx, params[3]);
-	float vOrig[3];
-
-	vOrig[0] = amx_ctof(vInput[0]);
-	vOrig[1] = amx_ctof(vInput[1]);
-	vOrig[2] = amx_ctof(vInput[2]);
-
-	float rad = amx_ctof(params[4]);
-	int bit = params[5];
-	int iLen;
-	char *vxWeapon = MF_GetAmxString(amx, params[6], 0, &iLen);
-	int hs = params[7];
-
-	RadiusDamage_AMXMod_Base(pEntity, dmg, vOrig, rad, bit, vxWeapon, hs);
-
-	return 1;
-}
-
-static cell AMX_NATIVE_CALL RadiusDamage_AMXModX(AMX *amx, cell *params)
+// RadiusDamage. Damages players within a certain radius. ToDo: add the
+// damage messaging so players know where the damage is coming from
+// (the red arrow-like things on the screen).
+static cell AMX_NATIVE_CALL RadiusDamage(AMX *amx, cell *params)
 {
 	cell *cAddr = MF_GetAmxAddr(amx,params[1]);
 
@@ -199,24 +188,6 @@ static cell AMX_NATIVE_CALL RadiusDamage_AMXModX(AMX *amx, cell *params)
 	}
 
 	return 1;
-}
-
-// RadiusDamage. Damages players within a certain radius. ToDo: add the
-// damage messaging so players know where the damage is coming from
-// (the red arrow-like things on the screen).
-//(vexd)
-static cell AMX_NATIVE_CALL RadiusDamage(AMX *amx, cell *params)
-{
-	cell numParams = params[0] / sizeof(cell);
-
-	if (numParams == 3)
-	{
-		return RadiusDamage_AMXModX(amx, params);
-	} else if (numParams == 7) {
-		return RadiusDamage_AMXMod(amx, params);
-	}
-
-	return 0;
 }
 
 static cell AMX_NATIVE_CALL PointContents(AMX *amx, cell *params)
@@ -898,7 +869,7 @@ static cell AMX_NATIVE_CALL traceresult(AMX *amx, cell *params)
 // (jghg)
 static cell AMX_NATIVE_CALL get_string(AMX *amx, cell *params) // (string, returnstring[], length)
 {
-	snprintf(g_buffer, BUFFERSIZE, "%s", STRING(params[1]));
+	UTIL_Format(g_buffer, sizeof(g_buffer)-1, "%s", STRING(params[1]));
 	return MF_SetAmxString(amx, params[2], g_buffer, params[3]);
 }
 

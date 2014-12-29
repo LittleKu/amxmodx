@@ -1,36 +1,15 @@
-/* AMX Mod X
-*   StatsX Plugin
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is part of AMX Mod X.
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// StatsX Plugin
+//
 
 //--------------------------------
 #include <amxmodx>
@@ -95,9 +74,6 @@ public SpecRankInfo         = 0 // displays rank info when spectating
 
 // Standard Contstants.
 #define MAX_TEAMS               2
-#define MAX_PLAYERS             32 + 1
-
-#define MAX_NAME_LENGTH         31
 #define MAX_WEAPON_LENGTH       31
 #define MAX_TEXT_LENGTH         255
 #define MAX_BUFFER_LENGTH       2047
@@ -169,7 +145,7 @@ new g_izTeamGameStats[MAX_TEAMS][8]
 new g_izUserUserID[MAX_PLAYERS]                     = {0, ...}
 new g_izUserAttackerDistance[MAX_PLAYERS]           = {0, ...}
 new g_izUserVictimDistance[MAX_PLAYERS][MAX_PLAYERS]
-new g_izUserRndName[MAX_PLAYERS][MAX_NAME_LENGTH + 1]
+new g_izUserRndName[MAX_PLAYERS][MAX_NAME_LENGTH]
 new g_izUserRndStats[MAX_PLAYERS][8]
 new g_izUserGameStats[MAX_PLAYERS][8]
 
@@ -317,18 +293,12 @@ public cmdHudTest(id)
 // Stats formulas
 Float:accuracy(izStats[8])
 {
-	if (!izStats[STATS_SHOTS])
-		return (0.0)
-
-	return (100.0 * float(izStats[STATS_HITS]) / float(izStats[STATS_SHOTS]))
+	return izStats[STATS_SHOTS] ? (100.0 * float(izStats[STATS_HITS]) / float(izStats[STATS_SHOTS])) : (0.0);
 }
 
 Float:effec(izStats[8])
 {
-	if (!izStats[STATS_KILLS])
-		return (0.0)
-
-	return (100.0 * float(izStats[STATS_KILLS]) / float(izStats[STATS_KILLS] + izStats[STATS_DEATHS]))
+	return izStats[STATS_KILLS] ? (100.0 * float(izStats[STATS_KILLS]) / float(izStats[STATS_KILLS] + izStats[STATS_DEATHS])) : (0.0);
 }
 
 // Distance formula (metric)
@@ -352,15 +322,9 @@ set_plugin_mode(id, sFlags[])
 // Get config parameters.
 get_config_cvars()
 {
-	g_fFreezeTime = get_pcvar_float(g_pFreezeTime)
+	g_fFreezeTime = floatmax(get_pcvar_float(g_pFreezeTime), 0.0);
 
-	if (g_fFreezeTime < 0.0)
-		g_fFreezeTime = 0.0
-
-	g_fHUDDuration = get_pcvar_float(g_pHudDuration)
-
-	if (g_fHUDDuration < 1.0)
-		g_fHUDDuration = 1.0
+	g_fHUDDuration = floatmax(get_pcvar_float(g_pHudDuration), 1.0);
 
 	g_fFreezeLimitTime = get_pcvar_float(g_pHudFreezeLimit)
 }
@@ -371,7 +335,6 @@ get_attackers(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 	new izStats[8], izBody[8]
 	new iAttacker
 	new iFound, iLen
-	new iMaxPlayer = get_maxplayers()
 
 	iFound = 0
 	sBuffer[0] = 0
@@ -394,7 +357,7 @@ get_attackers(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 		iLen = formatex(sBuffer, charsmax(sBuffer), "%L:^n", id, "ATTACKERS")
 
 	// Get and format attacker list.
-	for (iAttacker = 1; iAttacker <= iMaxPlayer; iAttacker++)
+	for (iAttacker = 1; iAttacker <= MaxClients; iAttacker++)
 	{
 		if (get_user_astats(id, iAttacker, izStats, izBody, t_sWpn, charsmax(t_sWpn)))
 		{
@@ -430,7 +393,6 @@ get_victims(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 	new izStats[8], izBody[8]
 	new iVictim
 	new iFound, iLen
-	new iMaxPlayer = get_maxplayers()
 
 	iFound = 0
 	sBuffer[0] = 0
@@ -446,7 +408,7 @@ get_victims(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 	else
 		iLen = formatex(sBuffer, charsmax(sBuffer), "%L:^n", id, "VICTIMS")
 
-	for (iVictim = 1; iVictim <= iMaxPlayer; iVictim++)
+	for (iVictim = 1; iVictim <= MaxClients; iVictim++)
 	{
 		if (get_user_vstats(id, iVictim, izStats, izBody, t_sWpn, charsmax(t_sWpn)))
 		{
@@ -518,7 +480,7 @@ add_most_disruptive(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 	iMaxHeadShots = 0
 
 	// Find player.
-	for (iPlayer = 1; iPlayer < MAX_PLAYERS; iPlayer++)
+	for (iPlayer = 1; iPlayer <= MaxClients; iPlayer++)
 	{
 		if (g_izUserRndStats[iPlayer][STATS_DAMAGE] >= iMaxDamage && (g_izUserRndStats[iPlayer][STATS_DAMAGE] > iMaxDamage || g_izUserRndStats[iPlayer][STATS_HS] > iMaxHeadShots))
 		{
@@ -554,7 +516,7 @@ add_best_score(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 	iMaxHeadShots = 0
 
 	// Find player
-	for (iPlayer = 1; iPlayer < MAX_PLAYERS; iPlayer++)
+	for (iPlayer = 1; iPlayer <= MaxClients; iPlayer++)
 	{
 		if (g_izUserRndStats[iPlayer][STATS_KILLS] >= iMaxKills && (g_izUserRndStats[iPlayer][STATS_KILLS] > iMaxKills || g_izUserRndStats[iPlayer][STATS_HS] > iMaxHeadShots))
 		{
@@ -645,7 +607,7 @@ add_attacker_hits(id, iAttacker, sBuffer[MAX_BUFFER_LENGTH + 1])
 
 			iLen += formatex(sBuffer[iLen], charsmax(sBuffer) - iLen, "%L:^n", id, "HITS_YOU_IN", t_sName)
 
-			for (new i = 1; i < 8; i++)
+			for (new i = 1; i < sizeof(izBody); i++)
 			{
 				if (!izBody[i])
 					continue
@@ -678,7 +640,7 @@ format_kill_ainfo(id, iKiller, sBuffer[MAX_BUFFER_LENGTH + 1])
 
 		if (izStats[STATS_HITS])
 		{
-			for (new i = 1; i < 8; i++)
+			for (new i = 1; i < sizeof(izBody); i++)
 			{
 				if (!izBody[i])
 					continue
@@ -718,7 +680,7 @@ format_kill_vinfo(id, iKiller, sBuffer[MAX_BUFFER_LENGTH + 1])
 
 	if (izStats[STATS_HITS])
 	{
-		for (new i = 1; i < 8; i++)
+		for (new i = 1; i < sizeof(izBody); i++)
 		{
 			if (!izBody[i])
 				continue
@@ -787,7 +749,7 @@ format_rankstats(id, sBuffer[MAX_BUFFER_LENGTH + 1], iMyId = 0)
 	ucfirst(lAcc)
 
 	iRankPos = get_user_stats(id, izStats, izBody)
-	iLen = formatex(sBuffer, charsmax(sBuffer), "<body bgcolor=#000000><font color=#FFB000><pre>")
+	iLen = formatex(sBuffer, charsmax(sBuffer), "<meta charset=utf-8><body bgcolor=#000000><font color=#FFB000><pre>")
 	iLen += formatex(sBuffer[iLen], charsmax(sBuffer) - iLen, "%L %L^n^n", id, (!iMyId || iMyId == id) ? "YOUR" : "PLAYERS", id, "RANK_IS", iRankPos, get_statsnum())
 	iLen += formatex(sBuffer[iLen], charsmax(sBuffer) - iLen, "%6s: %d  (%d with hs)^n%6s: %d^n%6s: %d^n%6s: %d^n%6s: %d^n%6s: %0.2f%%^n%6s: %0.2f%%^n^n",
 					lKills, izStats[STATS_KILLS], izStats[STATS_HS], lDeaths, izStats[STATS_DEATHS], lHits, izStats[STATS_HITS], lShots, izStats[STATS_SHOTS],
@@ -795,7 +757,7 @@ format_rankstats(id, sBuffer[MAX_BUFFER_LENGTH + 1], iMyId = 0)
 
 	new L_BODY_PART[8][32]
 
-	for (new i = 1; i < 8; i++)
+	for (new i = 1; i < sizeof(L_BODY_PART); i++)
 	{
 		formatex(L_BODY_PART[i], charsmax(L_BODY_PART[]), "%L", id, BODY_PART[i])
 	}
@@ -827,7 +789,7 @@ format_stats(id, sBuffer[MAX_BUFFER_LENGTH + 1])
 
 	get_user_wstats(id, 0, izStats, izBody)
 
-	iLen = formatex(sBuffer, charsmax(sBuffer), "<body bgcolor=#000000><font color=#FFB000><pre>")
+	iLen = formatex(sBuffer, charsmax(sBuffer), "<meta charset=utf-8><body bgcolor=#000000><font color=#FFB000><pre>")
 	iLen += formatex(sBuffer[iLen], charsmax(sBuffer) - iLen, "%6s: %d  (%d with hs)^n%6s: %d^n%6s: %d^n%6s: %d^n%6s: %d^n%6s: %0.2f%%^n%6s: %0.2f%%^n^n",
 					lKills, izStats[STATS_KILLS], izStats[STATS_HS], lDeaths, izStats[STATS_DEATHS], lHits, izStats[STATS_HITS], lShots, izStats[STATS_SHOTS],
 					lDamage, izStats[STATS_DAMAGE], lEff, effec(izStats), lAcc, accuracy(izStats))
@@ -1330,14 +1292,14 @@ public eventStartRound()
 			{
 				g_izTeamEventScore[iTeam] = 0
 
-				for (i = 0; i < 8; i++)
+				for (i = 0; i < sizeof(g_izTeamGameStats[]); i++)
 					g_izTeamGameStats[iTeam][i] = 0
 			}
 
 			// Clear game stats, incl '0' that is sum of all users.
-			for (id = 0; id < MAX_PLAYERS; id++)
+			for (id = 0; id <= MaxClients; id++)
 			{
-				for (i = 0; i < 8; i++)
+				for (i = 0; i < sizeof(g_izUserGameStats[]); i++)
 					g_izUserGameStats[id][i] = 0
 			}
 		}
@@ -1348,16 +1310,16 @@ public eventStartRound()
 		{
 			g_izTeamScore[iTeam] = g_izTeamEventScore[iTeam]
 
-			for (i = 0; i < 8; i++)
+			for (i = 0; i < sizeof(g_izTeamRndStats[]); i++)
 				g_izTeamRndStats[iTeam][i] = 0
 		}
 
 		// Clear user round stats, incl '0' that is sum of all users.
-		for (id = 0; id < MAX_PLAYERS; id++)
+		for (id = 0; id <= MaxClients; id++)
 		{
 			g_izUserRndName[id][0] = 0
 
-			for (i = 0; i < 8; i++)
+			for (i = 0; i < sizeof(g_izUserRndStats[]); i++)
 				g_izUserRndStats[id][i] = 0
 
 			g_fzShowUserStatsTime[id] = 0.0
@@ -1385,7 +1347,7 @@ public eventSpawn(id)
 	args[0] = id
 
 	if (g_iPluginMode & MODE_HUD_DELAY)
-		set_task(0.1, "delay_spawn", 200 + id, args, 1)
+		set_task(0.1, "delay_spawn", 200 + id, args, sizeof(args))
 	else
 		delay_spawn(args)
 
@@ -1417,7 +1379,7 @@ public delay_spawn(args[])
 	g_fzShowUserStatsTime[id] = 0.0
 	g_izUserAttackerDistance[id] = 0
 
-	for (new i = 0; i < MAX_PLAYERS; i++)
+	for (new i = 1; i <= MaxClients; i++)
 		g_izUserVictimDistance[id][i] = 0
 
 	return PLUGIN_CONTINUE
@@ -1500,7 +1462,7 @@ kill_stats(id)
 		// Update user's team round stats
 		if (iTeam >= 0 && iTeam < MAX_TEAMS)
 		{
-			for (i = 0; i < 8; i++)
+			for (i = 0; i < sizeof(izStats); i++)
 			{
 				g_izTeamRndStats[iTeam][i] += izStats[i]
 				g_izTeamGameStats[iTeam][i] += izStats[i]
@@ -1512,7 +1474,7 @@ kill_stats(id)
 		// Update user's round stats
 		if (g_izUserUserID[id] == get_user_userid(id))
 		{
-			for (i = 0; i < 8; i++)
+			for (i = 0; i < sizeof(izStats); i++)
 			{
 				g_izUserRndStats[id][i] += izStats[i]
 				g_izUserGameStats[id][i] += izStats[i]
@@ -1520,7 +1482,7 @@ kill_stats(id)
 		} else {
 			g_izUserUserID[id] = get_user_userid(id)
 
-			for (i = 0; i < 8; i++)
+			for (i = 0; i < sizeof(izStats); i++)
 			{
 				g_izUserRndStats[id][i] = izStats[i]
 				g_izUserGameStats[id][i] = izStats[i]
@@ -1622,7 +1584,7 @@ endround_stats()
 public eventTeamScore()
 {
 	new sTeamID[1 + 1], iTeamScore
-	read_data(1, sTeamID, 1)
+	read_data(1, sTeamID, charsmax(sTeamID))
 	iTeamScore = read_data(2)
 	g_izTeamEventScore[(sTeamID[0] == 'C') ? 1 : 0] = iTeamScore
 
@@ -1675,7 +1637,7 @@ public end_game_stats()
 public eventSpecMode(id)
 {
 	new sData[12]
-	read_data(2, sData, 11)
+	read_data(2, sData, charsmax(sData))
 	g_izSpecMode[id] = (sData[10] == '2')
 
 	return PLUGIN_CONTINUE

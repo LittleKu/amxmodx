@@ -1,36 +1,15 @@
-/* AMX Mod X
-*   Admin Chat Plugin
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is part of AMX Mod X.
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation,
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve,
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Admin Chat Plugin
+//
 
 #include <amxmodx>
 #include <amxmisc>
@@ -47,8 +26,8 @@ new amx_show_activity;
 new amx_flood_time;
 new g_AdminChatFlag = ADMIN_CHAT;
 
-new Float:g_Flooding[33] = {0.0, ...}
-new g_Flood[33] = {0, ...}
+new Float:g_Flooding[MAX_PLAYERS] = {0.0, ...}
+new g_Flood[MAX_PLAYERS] = {0, ...}
 
 public plugin_init()
 {
@@ -70,7 +49,7 @@ public plugin_init()
 	
 	if (amx_show_activity == 0)
 	{
-		amx_show_activity = register_cvar("amx_show_activity", "2");
+		amx_show_activity = register_cvar("amx_show_activity", "2", FCVAR_PROTECTED);
 	}
 
 	new str[1]
@@ -138,7 +117,7 @@ public cmdSayChat(id, level)
 	}
 	
 
-	new name[32], authid[32], userid
+	new name[MAX_NAME_LENGTH], authid[32], userid
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -225,7 +204,7 @@ public cmdSayAdmin(id)
 		g_Flooding[id] = nexTime + maxChat
 	}
 
-	new message[192], name[32], authid[32], userid
+	new message[192], name[MAX_NAME_LENGTH], authid[32], userid
 	new players[32], inum, pl
 	
 	read_args(message, charsmax(message))
@@ -267,7 +246,7 @@ public cmdChat(id, level, cid)
 	if (!message[0])
 		return PLUGIN_HANDLED
 	
-	new name[32], players[32], inum, authid[32], userid, pl
+	new name[MAX_NAME_LENGTH], players[32], inum, authid[32], userid, pl
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -295,7 +274,7 @@ public cmdSay(id, level, cid)
 	if (!cmd_access(id, level, cid, 2))
 		return PLUGIN_HANDLED
 
-	new message[192], name[32], authid[32], userid
+	new message[192], name[MAX_NAME_LENGTH], authid[32], userid
 	
 	read_args(message, charsmax(message))
 	remove_quotes(message)
@@ -316,7 +295,7 @@ public cmdPsay(id, level, cid)
 	if (!cmd_access(id, level, cid, 3))
 		return PLUGIN_HANDLED
 	
-	new name[32]
+	new name[MAX_NAME_LENGTH]
 	read_argv(1, name, charsmax(name))
 	new priv = cmd_target(id, name, 0)
 
@@ -325,7 +304,7 @@ public cmdPsay(id, level, cid)
 	
 	new length = strlen(name) + 1
 
-	new message[192], name2[32], authid[32], authid2[32], userid, userid2
+	new message[192], name2[MAX_NAME_LENGTH], authid[32], authid2[32], userid, userid2
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name2, charsmax(name2))
@@ -361,7 +340,7 @@ public cmdTsay(id, level, cid)
 	if (!cmd_access(id, level, cid, 3))
 		return PLUGIN_HANDLED
 	
-	new cmd[16], color[16], color2[16], message[192], name[32], authid[32], userid = 0
+	new cmd[16], color[16], color2[16], message[192], name[MAX_NAME_LENGTH], authid[32], userid = 0
 	
 	read_argv(0, cmd, charsmax(cmd))
 	new bool:tsay = (tolower(cmd[4]) == 't')

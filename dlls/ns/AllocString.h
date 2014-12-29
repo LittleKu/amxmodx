@@ -1,35 +1,15 @@
-/* AMX Mod X 
- *   Natural Selection Module 
- * 
- * by the AMX Mod X Development Team 
- *
- * This file is part of AMX Mod X. 
- * 
- * 
- *  This program is free software; you can redistribute it and/or modify it 
- *  under the terms of the GNU General Public License as published by the 
- *  Free Software Foundation; either version 2 of the License, or (at 
- *  your option) any later version. 
- * 
- *  This program is distributed in the hope that it will be useful, but 
- *  WITHOUT ANY WARRANTY; without even the implied warranty of 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
- *  General Public License for more details. 
- * 
- *  You should have received a copy of the GNU General Public License 
- *  along with this program; if not, write to the Free Software Foundation, 
- *  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA 
- * 
- *  In addition, as a special exception, the author gives permission to 
- *  link the code of this program with the Half-Life Game Engine ("HL 
- *  Engine") and Modified Game Libraries ("MODs") developed by Valve, 
- *  L.L.C ("Valve"). You must obey the GNU General Public License in all 
- *  respects for all of the code used other than the HL Engine and MODs 
- *  from Valve. If you modify this file, you may extend this exception 
- *  to your version of the file, but you are not obligated to do so. If 
- *  you do not wish to do so, delete this exception statement from your 
- *  version. 
- */ 
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Natural Selection Module
+//
 
 /* This file is a replacement for the engine call of ALLOC_STRING
  * The main difference is that a string will not be allocated twice
@@ -43,13 +23,13 @@
 #ifndef ALLOCSTRING_H
 #define ALLOCSTRING_H
 
-#include "CString.h"
-#include "sh_list.h"
+#include <am-string.h>
+#include <am-linkedlist.h>
 
 class StringManager
 {
 private:
-	List<String *>		m_StringList;
+	ke::LinkedList<ke::AString *>		m_StringList;
 
 public:
 	/**
@@ -58,8 +38,8 @@ public:
 	 */
 	inline void Clear(void)
 	{
-		List<String *>::iterator		 end;
-		List<String *>::iterator		 iter;
+		ke::LinkedList<ke::AString *>::iterator		 end;
+		ke::LinkedList<ke::AString *>::iterator		 iter;
 
 		iter=m_StringList.begin();
 		end=m_StringList.end();
@@ -79,30 +59,28 @@ public:
 	 */
 	inline int Allocate(const char *str)
 	{
-		List<String *>::iterator		 end;
-		List<String *>::iterator		 iter;
+		ke::LinkedList<ke::AString *>::iterator		 end;
+		ke::LinkedList<ke::AString *>::iterator		 iter;
 
 		iter=m_StringList.begin();
 		end=m_StringList.end();
 
 		while (iter!=end)
 		{
-			if (strcmp(str, (*iter)->c_str()) == 0)
+			if (strcmp(str, (*iter)->chars()) == 0)
 			{
 				// String is already in the list, do not allocate it again
-				return MAKE_STRING((*iter)->c_str());
+				return MAKE_STRING((*iter)->chars());
 			}
 			++iter;
 		}
 
 		// Was not found in the linked list, allocate it and add it to the list
-		String *AllocStr = new String;
+		ke::AString *AllocStr = new ke::AString(str);
 
-		AllocStr->assign(str);
+		m_StringList.append(AllocStr);
 
-		m_StringList.push_back(AllocStr);
-
-		return MAKE_STRING(AllocStr->c_str());
+		return MAKE_STRING(AllocStr->chars());
 
 	};
 

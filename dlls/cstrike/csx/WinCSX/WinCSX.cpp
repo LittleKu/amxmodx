@@ -1,10 +1,34 @@
-// WinCSX.cpp : Defines the entry point for the application.
+// vim: set ts=4 sw=4 tw=99 noet:
 //
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #include "stdafx.h"
 #include "WinCSX.h"
 #include <stdio.h>
 #include "commctrl.h"
+
+size_t UTIL_Format(char *buffer, size_t maxlength, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	size_t len = vsnprintf(buffer, maxlength, fmt, ap);
+	va_end(ap);
+
+	if (len >= maxlength)
+	{
+		buffer[maxlength - 1] = '\0';
+		return (maxlength - 1);
+	}
+	else
+	{
+		return len;
+	}
+}
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -172,7 +196,7 @@ void UpdateListBox(HWND hDlg) {
 		//if ((*b).getPosition() < 1) // umm... naaah!
 			//continue;
 
-		_snprintf(tempbuffer, 1023, "%s", (*b).getName());
+		UTIL_Format(tempbuffer, sizeof(tempbuffer)-1, "%s", (*b).getName());
 
 		SendMessage(      // returns LRESULT in lResult
 			listbox,      // handle to destination control
@@ -319,7 +343,7 @@ void SaveChanges(HWND hDlg) {
 	UpdateListBox(hDlg);
 
 	char buffer[256];
-	_snprintf(buffer, 255, "New rank of %s: %d", name, newPosition);
+	UTIL_Format(buffer, sizeof(buffer)-1, "New rank of %s: %d", name, newPosition);
 	MessageBox(hDlg, buffer, "Update succeeded", MB_OK);
 
 	// In the listbox, we need to reselect the item we just updated. Use the new name.

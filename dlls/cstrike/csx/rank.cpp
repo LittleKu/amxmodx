@@ -1,4 +1,15 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
+//
+// CSX Module
+//
 
 #include "amxxmodule.h"
 #include "rank.h"
@@ -388,7 +399,8 @@ static cell AMX_NATIVE_CALL get_map_objectives(AMX *amx, cell *params)
 
 	if (!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "func_hostage_rescue")) ||
 		!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "info_hostage_rescue")) ||
-		!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "hostage_entity"))) // there are maps with only this and using team spawn as rescue zone.
+		!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "hostage_entity"))      || // ) there are maps with only this and using team spawn as rescue zone.
+		!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "monster_scientist")))     // ) 
 		flags |= MapObjective_Hostage;
 
 	if (!FNullEnt(FIND_ENTITY_BY_STRING(NULL, "classname", "func_vip_safetyzone")))

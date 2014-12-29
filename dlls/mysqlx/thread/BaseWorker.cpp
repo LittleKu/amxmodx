@@ -1,4 +1,14 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
 #include "BaseWorker.h"
+#include <am-linkedlist.h>
 
 BaseWorker::BaseWorker() : 
 	m_perFrame(SM_DEFAULT_THREADS_PER_FRAME),
@@ -11,7 +21,7 @@ BaseWorker::~BaseWorker()
 	if (m_state != Worker_Stopped || m_state != Worker_Invalid)
 		Stop(true);
 
-	if (m_ThreadQueue.size())
+	if (m_ThreadQueue.length())
 		Flush(true);
 }
 
@@ -74,10 +84,10 @@ unsigned int BaseWorker::Flush(bool flush_cancel)
 
 SWThreadHandle *BaseWorker::PopThreadFromQueue()
 {
-	if (!m_ThreadQueue.size())
+	if (!m_ThreadQueue.length())
 		return NULL;
 
-	SourceHook::List<SWThreadHandle *>::iterator begin;
+	ke::LinkedList<SWThreadHandle *>::iterator begin;
 	SWThreadHandle *swt;
 
 	begin = m_ThreadQueue.begin();
@@ -89,7 +99,7 @@ SWThreadHandle *BaseWorker::PopThreadFromQueue()
 
 void BaseWorker::AddThreadToQueue(SWThreadHandle *pHandle)
 {
-	m_ThreadQueue.push_back(pHandle);
+	m_ThreadQueue.append(pHandle);
 }
 
 unsigned int BaseWorker::GetMaxThreadsPerFrame()

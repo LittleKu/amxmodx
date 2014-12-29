@@ -1,3 +1,16 @@
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// NVault Module
+//
+
 #include <stdio.h>
 #include <stdarg.h>
 #if defined(__linux__) || defined(__APPLE__)
@@ -7,17 +20,17 @@
 
 Journal::Journal(const char *file)
 {
-	m_File.assign(file);
+	m_File = file;
 }
 
 bool Journal::Erase()
 {
-	return (unlink(m_File.c_str()) == 0);
+	return (unlink(m_File.chars()) == 0);
 }
 
 int Journal::Replay(VaultMap *pMap)
 {
-	m_fp = fopen(m_File.c_str(), "rb");
+	m_fp = fopen(m_File.chars(), "rb");
 	if (!m_fp)
 	{
 		return -1;
@@ -29,8 +42,8 @@ int Journal::Replay(VaultMap *pMap)
 	uint16_t len16;
 	char *key = NULL;
 	char *val = NULL;
-	String sKey;
-	String sVal;
+	ke::AString sKey;
+	ke::AString sVal;
 	time_t stamp;
 	JOp op;
 	int ops = 0;
@@ -46,8 +59,10 @@ int Journal::Replay(VaultMap *pMap)
 		op = static_cast<JOp>(temp8);
 		if (op == Journal_Clear)
 		{
-			pMap->Clear();
-		} else if (op == Journal_Prune) {
+			pMap->clear();
+		} 
+		else if (op == Journal_Prune) 
+		{
 			time_t start;
 			time_t end;
 			
@@ -57,11 +72,31 @@ int Journal::Replay(VaultMap *pMap)
 			if (!br.ReadUInt32(itemp)) goto fail;
 			end = static_cast<time_t>(itemp);
 			
-			pMap->Prune(start, end);
-			
-		} else if (op == Journal_Insert) {
-		
-			
+			for (StringHashMap<ArrayInfo>::iterator iter = pMap->iter(); !iter.empty(); iter.next())
+			{
+				time_t stamp = iter->value.stamp;
+				bool remove = false;
+
+				if (stamp != 0)
+				{
+					if (start == 0 && end == 0)
+						remove = true;
+					else if (start == 0 && stamp < end)
+						remove = true;
+					else if (end == 0 && stamp > start)
+						remove = true;
+					else if (stamp > start && stamp < end)
+						remove = true;
+
+					if (remove)
+					{
+						iter.erase();
+					}
+				}
+			}
+		} 
+		else if (op == Journal_Insert) 
+		{
 			if (!br.ReadUInt32(itemp)) goto fail;
 			stamp = static_cast<time_t>(itemp);
 			
@@ -77,9 +112,10 @@ int Journal::Replay(VaultMap *pMap)
 			
 			key[len8] = '\0';
 			val[len16] = '\0';
-			sKey.assign(key);
-			sVal.assign(val);
-			pMap->Insert(sKey, sVal, stamp);
+
+			ArrayInfo info; info.value = val; info.stamp = stamp;
+			pMap->replace(key, info);
+
 			//clean up
 			delete [] key;
 			key = NULL;
@@ -92,8 +128,8 @@ int Journal::Replay(VaultMap *pMap)
 			key = new char[len8+1];
 			if (!br.ReadChars(key, len8)) goto fail;
 			key[len8] = '\0';
-			sKey.assign(key);
-			pMap->Remove(sKey);
+
+			pMap->remove(key);
 		}
 		ops++;
 	} while (op < Journal_TotalOps && op);
@@ -122,7 +158,7 @@ success:
 
 bool Journal::Begin()
 {
-	m_fp = fopen(m_File.c_str(), "wb");
+	m_fp = fopen(m_File.chars(), "wb");
 	m_Bw.SetFilePtr(m_fp);
 	return (m_fp != NULL);
 }

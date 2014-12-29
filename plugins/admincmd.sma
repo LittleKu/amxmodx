@@ -1,36 +1,15 @@
-/* AMX Mod X
-*   Admin Commands Plugin
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-* This file is part of AMX Mod X.
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation, 
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve, 
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
+
+//
+// Admin Commands Plugin
+//
 
 #include <amxmodx>
 #include <amxmisc>
@@ -42,7 +21,6 @@ new g_pauseCon
 new Float:g_pausAble
 new bool:g_Paused
 new bool:g_PauseAllowed = false
-new g_addCvar[] = "amx_cvar add %s"
 
 new pausable;
 new rcon_password;
@@ -50,7 +28,7 @@ new timelimit;
 new p_amx_tempban_maxtime;
 
 // Old connection queue
-new g_Names[OLD_CONNECTION_QUEUE][32];
+new g_Names[OLD_CONNECTION_QUEUE][MAX_NAME_LENGTH];
 new g_SteamIDs[OLD_CONNECTION_QUEUE][32];
 new g_IPs[OLD_CONNECTION_QUEUE][32];
 new g_Access[OLD_CONNECTION_QUEUE];
@@ -162,8 +140,7 @@ public plugin_init()
 	register_dictionary("admincmd.txt")
 	register_dictionary("common.txt")
 	register_dictionary("adminhelp.txt")
-	
-	
+
 	register_concmd("amx_kick", "cmdKick", ADMIN_KICK, "<name or #userid> [reason]")
 	register_concmd("amx_ban", "cmdBan", ADMIN_BAN|ADMIN_BAN_TEMP, "<name or #userid> <minutes> [reason]")
 	register_concmd("amx_banip", "cmdBanIP", ADMIN_BAN|ADMIN_BAN_TEMP, "<name or #userid> <minutes> [reason]")
@@ -188,33 +165,19 @@ public plugin_init()
 	register_clcmd("amx_showrcon", "cmdShowRcon", ADMIN_RCON, "<command line>")
 	register_clcmd("pauseAck", "cmdLBack")
 
-
 	rcon_password=get_cvar_pointer("rcon_password");
 	pausable=get_cvar_pointer("pausable");
 	timelimit=get_cvar_pointer( "mp_timelimit" );
-	p_amx_tempban_maxtime = register_cvar("amx_tempban_maxtime", "4320");
+	p_amx_tempban_maxtime = register_cvar("amx_tempban_maxtime", "4320", FCVAR_PROTECTED);
 
 	g_tempBans = TrieCreate();
-}
 
-public plugin_cfg()
-{
-	// Cvars which can be changed only with rcon access
-	server_cmd(g_addCvar, "rcon_password")
-	server_cmd(g_addCvar, "amx_show_activity")
-	server_cmd(g_addCvar, "amx_mode")
-	server_cmd(g_addCvar, "amx_password_field")
-	server_cmd(g_addCvar, "amx_default_access")
-	server_cmd(g_addCvar, "amx_reserved_slots")
-	server_cmd(g_addCvar, "amx_reservation")
-	server_cmd(g_addCvar, "amx_sql_table");
-	server_cmd(g_addCvar, "amx_sql_host");
-	server_cmd(g_addCvar, "amx_sql_user");
-	server_cmd(g_addCvar, "amx_sql_pass");
-	server_cmd(g_addCvar, "amx_sql_db");
-	server_cmd(g_addCvar, "amx_sql_type");
-	server_cmd(g_addCvar, "amx_tempban_maxtime");
+	new flags = get_pcvar_flags(rcon_password);
 
+	if (!(flags & FCVAR_PROTECTED))
+	{
+		set_pcvar_flags(rcon_password, flags | FCVAR_PROTECTED);
+	}
 }
 
 public cmdKick(id, level, cid)
@@ -229,7 +192,7 @@ public cmdKick(id, level, cid)
 	if (!player)
 		return PLUGIN_HANDLED
 	
-	new authid[32], authid2[32], name2[32], name[32], userid2, reason[32]
+	new authid[32], authid2[32], name2[MAX_NAME_LENGTH], name[MAX_NAME_LENGTH], userid2, reason[32]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_authid(player, authid2, charsmax(authid2))
@@ -263,7 +226,7 @@ public cmdUnban(id, level, cid)
 	if (!cmd_access(id, level, cid, 2))
 		return PLUGIN_HANDLED
 	
-	new arg[32], authid[32], name[32]
+	new arg[32], authid[32], name[MAX_NAME_LENGTH]
 	
 	read_argv(1, arg, charsmax(arg))
 
@@ -320,12 +283,13 @@ public cmdAddBan(id, level, cid)
 		}
 	}
 
-	new arg[32], authid[32], name[32], minutes[32], reason[32]
+	new arg[32], authid[32], name[MAX_NAME_LENGTH], minutes[32], reason[32]
 	
 	read_argv(1, arg, charsmax(arg))
 	read_argv(2, minutes, charsmax(minutes))
 	read_argv(3, reason, charsmax(reason))
 	
+	trim(arg);
 	
 	if (!(get_user_flags(id) & ADMIN_RCON))
 	{
@@ -353,7 +317,7 @@ public cmdAddBan(id, level, cid)
 		if (isip)
 		{
 			new IP[32];
-			new Name[32];
+			new Name[MAX_NAME_LENGTH];
 			new dummy[1];
 			new Access;
 			for (new i = 0; i < g_Size; i++)
@@ -455,7 +419,7 @@ public cmdBan(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 
-	new authid[32], name2[32], authid2[32], name[32]
+	new authid[32], name2[MAX_NAME_LENGTH], authid2[32], name[MAX_NAME_LENGTH]
 	new userid2 = get_user_userid(player)
 
 	get_user_authid(player, authid2, charsmax(authid2))
@@ -541,7 +505,7 @@ public cmdBanIP(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 	
-	new authid[32], name2[32], authid2[32], name[32]
+	new authid[32], name2[MAX_NAME_LENGTH], authid2[32], name[MAX_NAME_LENGTH]
 	new userid2 = get_user_userid(player)
 	
 	get_user_authid(player, authid2, charsmax(authid2))
@@ -616,7 +580,7 @@ public cmdSlay(id, level, cid)
 	
 	user_kill(player)
 	
-	new authid[32], name2[32], authid2[32], name[32]
+	new authid[32], name2[MAX_NAME_LENGTH], authid2[32], name[MAX_NAME_LENGTH]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -645,7 +609,7 @@ public cmdSlap(id, level, cid)
 	if (!player)
 		return PLUGIN_HANDLED
 
-	new spower[32], authid[32], name2[32], authid2[32], name[32]
+	new spower[32], authid[32], name2[MAX_NAME_LENGTH], authid2[32], name[MAX_NAME_LENGTH]
 	
 	read_argv(2, spower, charsmax(spower))
 	
@@ -669,7 +633,7 @@ public cmdSlap(id, level, cid)
 
 public chMap(map[])
 {
-	server_cmd("changelevel %s", map)
+	change_level(map);
 }
 
 public cmdMap(id, level, cid)
@@ -686,7 +650,7 @@ public cmdMap(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 
-	new authid[32], name[32]
+	new authid[32], name[MAX_NAME_LENGTH]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -725,7 +689,7 @@ public cmdExtendMap(id, level, cid)
 	get_mapname(mapname, charsmax(mapname))
 	set_pcvar_num( timelimit , get_pcvar_num( timelimit ) + mns)
 	
-	new authid[32], name[32]
+	new authid[32], name[MAX_NAME_LENGTH]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -774,6 +738,8 @@ public cmdCvar(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 	
+	trim(arg);
+	
 	if ((pointer=get_cvar_pointer(arg))==0)
 	{
 		console_print(id, "[AMXX] %L", id, "UNKNOWN_CVAR", arg)
@@ -798,7 +764,7 @@ public cmdCvar(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 
-	new authid[32], name[32]
+	new authid[32], name[MAX_NAME_LENGTH]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -926,7 +892,7 @@ public cmdXvar(id, level, cid)
 		num_to_str(value, arg2, charsmax(arg2));
 	}
 
-	new authid[32], name[32];
+	new authid[32], name[MAX_NAME_LENGTH];
 	
 	get_user_authid(id, authid, charsmax(authid));
 	get_user_name(id, name, charsmax(name));
@@ -959,7 +925,7 @@ public cmdPlugins(id, level, cid)
 		return PLUGIN_HANDLED;
 	}
 
-	new name[32], version[32], author[32], filename[32], status[32]
+	new name[MAX_NAME_LENGTH], version[32], author[32], filename[32], status[32]
 	new lName[32], lVersion[32], lAuthor[32], lFile[32], lStatus[32]
 
 	format(lName, charsmax(lName), "%L", id, "NAME")
@@ -1071,7 +1037,7 @@ public cmdCfg(id, level, cid)
 		return PLUGIN_HANDLED
 	}
 	
-	new authid[32], name[32]
+	new authid[32], name[MAX_NAME_LENGTH]
 	
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -1111,7 +1077,7 @@ public cmdPause(id, level, cid)
 	if (!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED 
 	
-	new authid[32], name[32], slayer = id
+	new authid[32], name[MAX_NAME_LENGTH], slayer = id
 	
 	get_user_authid(id, authid, charsmax(authid)) 
 	get_user_name(id, name, charsmax(name)) 
@@ -1179,7 +1145,7 @@ public cmdRcon(id, level, cid)
 	if (!cmd_access(id, level, cid, 2))
 		return PLUGIN_HANDLED
 	
-	new arg[128], authid[32], name[32]
+	new arg[128], authid[32], name[MAX_NAME_LENGTH]
 	
 	read_args(arg, charsmax(arg))
 	get_user_authid(id, authid, charsmax(authid))
@@ -1198,7 +1164,7 @@ public cmdWho(id, level, cid)
 	if (!cmd_access(id, level, cid, 1))
 		return PLUGIN_HANDLED
 
-	new players[32], inum, cl_on_server[64], authid[32], name[32], flags, sflags[32], plr
+	new players[32], inum, cl_on_server[64], authid[32], name[MAX_NAME_LENGTH], flags, sflags[32], plr
 	new lImm[16], lRes[16], lAccess[16], lYes[16], lNo[16]
 	
 	formatex(lImm, charsmax(lImm), "%L", id, "IMMU")
@@ -1255,9 +1221,9 @@ public cmdLeave(id, level, cid)
 			ltags[ltagsnum++][0] = 0
 	}
 	
-	new nick[32], ires, pnum = get_maxplayers() + 1, count = 0, lReason[128]
+	new nick[MAX_NAME_LENGTH], ires, pnum = MaxClients, count = 0, lReason[128]
 	
-	for (new b = 1; b < pnum; ++b)
+	for (new b = 1; b <= pnum; ++b)
 	{
 		if (!is_user_connected(b) && !is_user_connecting(b)) continue
 
@@ -1290,7 +1256,7 @@ public cmdLeave(id, level, cid)
 	
 	console_print(id, "[AMXX] %L", id, "KICKED_CLIENTS", count)
 	
-	new authid[32], name[32]
+	new authid[32], name[MAX_NAME_LENGTH]
 
 	get_user_authid(id, authid, charsmax(authid))
 	get_user_name(id, name, charsmax(name))
@@ -1339,7 +1305,7 @@ public cmdLast(id, level, cid)
 		return PLUGIN_HANDLED;
 	}
 	
-	new name[32];
+	new name[MAX_NAME_LENGTH];
 	new authid[32];
 	new ip[32];
 	new flags[32];

@@ -36,9 +36,6 @@
     <ClCompile Include="..\amxdbg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\amxmod_compat.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\amxmodx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -165,9 +162,6 @@
     <ClCompile Include="..\vector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\sdk\amxxmodule.cpp">
-      <Filter>SDK</Filter>
-    </ClCompile>
     <ClCompile Include="..\datastructs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -177,15 +171,24 @@
     <ClCompile Include="..\datapacks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\stackstructs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CTextParsers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\textparse.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\public\sdk\amxxmodule.cpp">
+      <Filter>SDK</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\amx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\amxdbg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\amxmod_compat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\amxmodx.h">
@@ -311,20 +314,20 @@
     <ClInclude Include="..\zlib\zlib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sdk\amxxmodule.h">
-      <Filter>SDK</Filter>
-    </ClInclude>
-    <ClInclude Include="..\sdk\moduleconfig.h">
-      <Filter>SDK</Filter>
-    </ClInclude>
     <ClInclude Include="..\CDataPack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sm_stringhashmap.h">
+    <ClInclude Include="..\CTextParsers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sm_memtable.h">
+    <ClInclude Include="..\textparse.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\sdk\amxxmodule.h">
+      <Filter>SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\public\sdk\moduleconfig.h">
+      <Filter>SDK</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -360,6 +363,9 @@
     <None Include="..\..\plugins\include\amxmodx.inc">
       <Filter>Pawn Includes</Filter>
     </None>
+    <None Include="..\..\plugins\include\amxmodx_version.inc">
+      <Filter>Pawn Includes</Filter>
+    </None>
     <None Include="..\..\plugins\include\core.inc">
       <Filter>Pawn Includes</Filter>
     </None>
@@ -387,9 +393,6 @@
     <None Include="..\..\plugins\include\string.inc">
       <Filter>Pawn Includes</Filter>
     </None>
-    <None Include="..\..\plugins\include\svn_version.inc">
-      <Filter>Pawn Includes</Filter>
-    </None>
     <None Include="..\..\plugins\include\time.inc">
       <Filter>Pawn Includes</Filter>
     </None>
@@ -409,6 +412,15 @@
       <Filter>Pawn Includes</Filter>
     </None>
     <None Include="..\..\plugins\include\datapack.inc">
+      <Filter>Pawn Includes</Filter>
+    </None>
+    <None Include="..\..\plugins\include\cellstack.inc">
+      <Filter>Pawn Includes</Filter>
+    </None>
+    <None Include="..\..\plugins\include\textparse_ini.inc">
+      <Filter>Pawn Includes</Filter>
+    </None>
+    <None Include="..\..\plugins\include\textparse_smc.inc">
       <Filter>Pawn Includes</Filter>
     </None>
   </ItemGroup>

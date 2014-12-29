@@ -19,9 +19,8 @@
  *  2.  Altered source versions must be plainly marked as such, and must not be
  *      misrepresented as being the original software.
  *  3.  This notice may not be removed or altered from any source distribution.
- *
- *  Version: $Id: sc1.c 3460 2007-04-24 13:36:36Z sawce $
  */
+
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
@@ -30,9 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined	__WIN32__ || defined _WIN32 || defined __MSDOS__
+#if defined __WIN32__ || defined _WIN32 || defined __MSDOS__
   #include <conio.h>
   #include <io.h>
+  #define snprintf _snprintf
 #endif
 
 #if defined LINUX || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
@@ -65,8 +65,10 @@
 #include <time.h>
 
 #include "sc.h"
+#include "sp_symhash.h"
+
 #define VERSION_STR "3.0.3367-amxx"
-#define VERSION_INT 0x300
+#define VERSION_INT 0x30A
 
 int pc_anytag;
 
@@ -103,7 +105,7 @@ static void doarg(char *name,int ident,int offset,int tags[],int numtags,
                   int fpublic,int fconst,arginfo *arg);
 static void make_report(symbol *root,FILE *log,char *sourcefile);
 static void reduce_referrers(symbol *root);
-static long max_stacksize(symbol *root);
+static long max_stacksize(symbol *root, int *recursion);
 static int testsymbols(symbol *root,int level,int testlabs,int testconst);
 static void destructsymbols(symbol *root,int level);
 static constvalue *find_constval_byval(constvalue *table,cell val);
@@ -114,7 +116,7 @@ static int doexpr(int comma,int chkeffect,int allowarray,int mark_endexpr,
 static void doassert(void);
 static void doexit(void);
 static void test(int label,int parens,int invert);
-static void doif(void);
+static int doif(void);
 static void dowhile(void);
 static void dodo(void);
 static void dofor(void);
@@ -131,6 +133,7 @@ static void addwhile(int *ptr);
 static void delwhile(void);
 static int *readwhile(void);
 static void inst_datetime_defines(void);
+static void inst_binary_name(char *binfname);
 
 static int lastst     = 0;      /* last executed statement type */
 static int nestlevel  = 0;      /* number of active (open) compound statements */
@@ -145,7 +148,7 @@ static int *wqptr;              /* pointer to next entry */
 #if !defined SC_LIGHT
   static char *sc_documentation=NULL;/* main documentation */
 #endif
-#if defined	__WIN32__ || defined _WIN32 || defined _Windows
+#if defined __WIN32__ || defined _WIN32 || defined _Windows
   static HWND hwndFinish = 0;
 #endif
 
@@ -405,6 +408,38 @@ void inst_datetime_defines()
   insert_subst("__TIME__", ltime, 8);
 }
 
+static void inst_binary_name(char *binfname)
+{
+  size_t i, len;
+  char *binptr;
+  char newpath[512], newname[512];
+
+  binptr = NULL;
+  len = strlen(binfname);
+  for (i = len - 1; i < len; i--)
+  {
+    if (binfname[i] == '/'
+#if defined WIN32 || defined _WIN32
+      || binfname[i] == '\\'
+#endif
+      )
+    {
+      binptr = &binfname[i + 1];
+      break;
+    }
+  }
+
+  if (binptr == NULL)
+  {
+    binptr = binfname;
+  }
+
+  snprintf(newpath, sizeof(newpath), "\"%s\"", binfname);
+  snprintf(newname, sizeof(newname), "\"%s\"", binptr);
+
+  insert_subst("__BINARY_PATH__", newpath, 15);
+  insert_subst("__BINARY_NAME__", newname, 15);
+}
 
 /*  "main" of the compiler
  */
@@ -428,14 +463,18 @@ int pc_compile(int argc, char *argv[])
   /* set global variables to their initial value */
   binf=NULL;
   initglobals();
-  errorset(sRESET);
-  errorset(sEXPRRELEASE);
+  errorset(sRESET,0);
+  errorset(sEXPRRELEASE,0);
   lexinit();
 
   /* make sure that we clean up on a fatal error; do this before the first
    * call to error(). */
   if ((jmpcode=setjmp(errbuf))!=0)
     goto cleanup;
+
+  sp_Globals = NewHashTable();
+  if (!sp_Globals)
+    error(123);
 
   /* allocate memory for fixed tables */
   inpfname=(char*)malloc(_MAX_PATH);
@@ -475,9 +514,9 @@ int pc_compile(int argc, char *argv[])
   if (get_sourcefile(1)!=NULL) {
     /* there are at least two or more source files */
     char *tname,*sname;
-    FILE *ftmp,*fsrc;
+    void *ftmp,*fsrc;
     int fidx;
-    #if defined	__WIN32__ || defined _WIN32
+    #if defined __WIN32__ || defined _WIN32
       tname=_tempnam(NULL,"pawn");
     #elif defined __MSDOS__ || defined _Windows
       tname=tempnam(NULL,"pawn");
@@ -491,10 +530,10 @@ int pc_compile(int argc, char *argv[])
       close(mkstemp(buffer));
       tname=buffer;
     #endif
-    ftmp=(FILE*)pc_createsrc(tname);
+    ftmp=(void*)pc_createsrc(tname);
     for (fidx=0; (sname=get_sourcefile(fidx))!=NULL; fidx++) {
       unsigned char tstring[128];
-      fsrc=(FILE*)pc_opensrc(sname);
+      fsrc=(void*)pc_opensrc(sname);
       if (fsrc==NULL)
         error(100,sname);
       pc_writesrc(ftmp,(unsigned char*)"#file ");
@@ -512,7 +551,7 @@ int pc_compile(int argc, char *argv[])
   } else {
     strcpy(inpfname,get_sourcefile(0));
   } /* if */
-  inpf_org=(FILE*)pc_opensrc(inpfname);
+  inpf_org=(void*)pc_opensrc(inpfname);
   if (inpf_org==NULL)
     error(100,inpfname);
   freading=TRUE;
@@ -557,13 +596,14 @@ int pc_compile(int argc, char *argv[])
     #if !defined NO_DEFINE
       delete_substtable();
       inst_datetime_defines();
+      inst_binary_name(binfname);
     #endif
     resetglobals();
     sc_ctrlchar=sc_ctrlchar_org;
     sc_packstr=lcl_packstr;
     sc_needsemicolon=lcl_needsemicolon;
     sc_tabsize=lcl_tabsize;
-    errorset(sRESET);
+    errorset(sRESET,0);
     /* reset the source file */
     inpf=inpf_org;
     freading=TRUE;
@@ -621,13 +661,14 @@ int pc_compile(int argc, char *argv[])
   #if !defined NO_DEFINE
     delete_substtable();
     inst_datetime_defines();
+    inst_binary_name(binfname);
   #endif
   resetglobals();
   sc_ctrlchar=sc_ctrlchar_org;
   sc_packstr=lcl_packstr;
   sc_needsemicolon=lcl_needsemicolon;
   sc_tabsize=lcl_tabsize;
-  errorset(sRESET);
+  errorset(sRESET,0);
   /* reset the source file */
   inpf=inpf_org;
   freading=TRUE;
@@ -636,7 +677,8 @@ int pc_compile(int argc, char *argv[])
   lexinit();                    /* clear internal flags of lex() */
   sc_status=statWRITE;          /* allow to write --this variable was reset by resetglobals() */
   writeleader(&glbtab);
-  insert_dbgfile(inpfname);
+  insert_dbgfile(inpfname);     /* attach to debug information */
+  insert_inputfile(inpfname);   /* save for the error system */
   if (strlen(incfname)>0) {
     if (strcmp(incfname,sDEF_PREFIX)==0)
       plungefile(incfname,FALSE,TRUE);  /* parse "default.inc" (again) */
@@ -676,19 +718,15 @@ cleanup:
 
   #if !defined SC_LIGHT
     if (errnum==0 && strlen(errfname)==0) {
-      long stacksize=max_stacksize(&glbtab);
+      int recursion;
       int flag_exceed=0;
       if (sc_amxlimit > 0 && (long)(hdrsize+code_idx+glb_declared*sizeof(cell)+sc_stksize*sizeof(cell)) >= sc_amxlimit)
         flag_exceed=1;
-      if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2 || stacksize+32>=(long)sc_stksize || flag_exceed) {
+      if ((sc_debug & sSYMBOLIC)!=0 || verbosity>=2 || flag_exceed) {
         pc_printf("Header size:       %8ld bytes\n", (long)hdrsize);
         pc_printf("Code size:         %8ld bytes\n", (long)code_idx);
         pc_printf("Data size:         %8ld bytes\n", (long)glb_declared*sizeof(cell));
-        pc_printf("Stack/heap size:   %8ld bytes; ", (long)sc_stksize*sizeof(cell));
-        if (stacksize<0)
-          pc_printf("max. usage is unknown, due to recursion\n");
-        else if (stacksize>0)
-          pc_printf("estimated max. usage=%ld cells (%ld bytes)\n",stacksize,stacksize*sizeof(cell));
+        pc_printf("Stack/heap size:   %8ld bytes\n", (long)sc_stksize*sizeof(cell));
         pc_printf("Total requirements:%8ld bytes\n", (long)hdrsize+(long)code_idx+(long)glb_declared*sizeof(cell)+(long)sc_stksize*sizeof(cell));
       } /* if */
       if (flag_exceed)
@@ -711,6 +749,7 @@ cleanup:
   delete_symbols(&loctab,0,TRUE,TRUE);    /* delete local variables if not yet
                                            * done (i.e. on a fatal error) */
   delete_symbols(&glbtab,0,TRUE,TRUE);
+  DestroyHashTable(sp_Globals);
   delete_consttable(&tagname_tab);
   delete_consttable(&libname_tab);
   delete_consttable(&sc_automaton_tab);
@@ -719,6 +758,7 @@ cleanup:
   delete_aliastable();
   delete_pathtable();
   delete_sourcefiletable();
+  delete_inputfiletable();
   delete_dbgstringtable();
   #if !defined NO_DEFINE
     delete_substtable();
@@ -742,7 +782,7 @@ cleanup:
     if (retcode==0 && verbosity>=2)
       pc_printf("\nDone.\n");
   } /* if */
-  #if defined	__WIN32__ || defined _WIN32 || defined _Windows
+  #if defined   __WIN32__ || defined _WIN32 || defined _Windows
     if (IsWindow(hwndFinish))
       PostMessage(hwndFinish,RegisterWindowMessage("PawnNotify"),retcode,0L);
   #endif
@@ -757,7 +797,7 @@ cleanup:
 #endif
 int pc_addconstant(char *name,cell value,int tag)
 {
-  errorset(sFORCESET);  /* make sure error engine is silenced */
+  errorset(sFORCESET,0);  /* make sure error engine is silenced */
   sc_status=statIDLE;
   add_constant(name,value,sGLOBAL,tag);
   return 1;
@@ -831,6 +871,7 @@ static void resetglobals(void)
   pc_addlibtable=TRUE;  /* by default, add a "library table" to the output file */
   sc_alignnext=FALSE;
   pc_docexpr=FALSE;
+  pc_deprecate = FALSE;
 }
 
 static void initglobals(void)
@@ -1008,7 +1049,10 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         strncpy(ename,option_value(ptr),_MAX_PATH); /* set name of error file */
         ename[_MAX_PATH-1]='\0';
         break;
-#if defined	__WIN32__ || defined _WIN32 || defined _Windows
+      case 'E':
+        sc_warnings_are_errors = 1;
+        break;
+#if defined __WIN32__ || defined _WIN32 || defined _Windows
       case 'H':
         hwndFinish=(HWND)atoi(option_value(ptr));
         if (!IsWindow(hwndFinish))
@@ -1074,7 +1118,11 @@ static void parseoptions(int argc,char **argv,char *oname,char *ename,char *pnam
         skipinput=atoi(option_value(ptr));
         break;
       case 't':
-        sc_tabsize=atoi(option_value(ptr));
+        i=atoi(option_value(ptr));
+        if (i>0)
+          sc_tabsize=i;
+        else
+          about();
         break;
       case 'v':
         verbosity= isdigit(*option_value(ptr)) ? atoi(option_value(ptr)) : 2;
@@ -1254,7 +1302,7 @@ static void setconfig(char *root)
     /* add the default "include" directory */
     #if defined __WIN32__ || defined _WIN32
       GetModuleFileName(NULL,path,_MAX_PATH);
-    #elif defined LINUX || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__
+    #elif defined ENABLE_BINRELOC && (defined LINUX || defined __FreeBSD__ || defined __OpenBSD__ || defined __APPLE__)
       /* see www.autopackage.org for the BinReloc module */
       ptr = (char *)SELFPATH;
       if (!ptr)
@@ -1336,7 +1384,7 @@ static void about(void)
     pc_printf("         -d2      full debug information and dynamic checking\n");
     pc_printf("         -d3      full debug information, dynamic checking, no optimization\n");
     pc_printf("         -e<name> set name of error file (quiet compile)\n");
-#if defined	__WIN32__ || defined _WIN32 || defined _Windows
+#if defined __WIN32__ || defined _WIN32 || defined _Windows
     pc_printf("         -H<hwnd> window handle to send a notification message on finish\n");
 #endif
     pc_printf("         -i<name> path for include files\n");
@@ -1351,6 +1399,7 @@ static void about(void)
     pc_printf("         -t<num>  TAB indent size (in character positions, default=%d)\n",sc_tabsize);
     pc_printf("         -v<num>  verbosity level; 0=quiet, 1=normal, 2=verbose (default=%d)\n",verbosity);
     pc_printf("         -w<num>  disable a specific warning by its number\n");
+    pc_printf("         -E       treat warnings as errors\n");
     pc_printf("         -X<num>  abstract machine size limit in bytes\n");
     pc_printf("         -\\       use '\\' for escape characters\n");
     pc_printf("         -^       use '^' for escape characters\n");
@@ -1358,7 +1407,7 @@ static void about(void)
     pc_printf("         -([+/-]  require parantheses for function invocation (default=%c)\n", optproccall ? '-' : '+');
     pc_printf("         sym=val  define constant \"sym\" with value \"val\"\n");
     pc_printf("         sym=     define constant \"sym\" with value 0\n");
-#if defined	__WIN32__ || defined _WIN32 || defined _Windows || defined __MSDOS__
+#if defined __WIN32__ || defined _WIN32 || defined _Windows || defined __MSDOS__
     pc_printf("\nOptions may start with a dash or a slash; the options \"-d0\" and \"/d0\" are\n");
     pc_printf("equivalent.\n");
 #endif
@@ -1411,7 +1460,8 @@ static void setconstants(void)
   add_constant("ucharmax",(1 << (sizeof(cell)-1)*8)-1,sGLOBAL,0);
 
   add_constant("__Pawn",VERSION_INT,sGLOBAL,0);
-  
+  add_constant("__LINE__", 0, sGLOBAL, 0);
+
   pc_anytag=pc_addtag("any");
 
   debug=0;
@@ -1953,10 +2003,10 @@ static int declloc(int fstatic)
     /* Although valid, a local variable whose name is equal to that
      * of a global variable or to that of a local variable at a lower
      * level might indicate a bug.
-	 * NOTE - don't bother with the error if there's no valid function!
+     * NOTE - don't bother with the error if there's no valid function!
      */
     if (((sym=findloc(name))!=NULL && sym->compound!=nestlevel) || findglb(name)!=NULL)
-	  if (curfunc!=NULL && (curfunc->usage & uNATIVE))
+      if (curfunc!=NULL && (curfunc->usage & uNATIVE))
         error(219,name);                  /* variable shadows another symbol */
     while (matchtoken('[')){
       ident=iARRAY;
@@ -2209,6 +2259,24 @@ static void initials(int ident,int tag,cell *size,int dim[],int numdim,
           err++;
         } /* if */
       } /* for */
+      if (numdim>1 && dim[numdim-1]==0 && !errorfound && err==0) {
+        /* also look whether, by any chance, all "counted" final dimensions are
+         * the same value; if so, we can store this
+         */
+        constvalue *ld=lastdim.next;
+        int match;
+        assert(ld!=NULL);
+        assert(strtol(ld->name,NULL,16)==0);
+        match=ld->value;
+        while (ld->next) {
+          ld=ld->next;
+          if (match!=ld->value) { 
+            match=0; 
+            break; 
+          }
+        }
+        dim[numdim-1]=match;
+      } /* if */
       /* after all arrays have been initalized, we know the (major) dimensions
        * of the array and we can properly adjust the indirection vectors
        */
@@ -2228,6 +2296,7 @@ static cell initarray(int ident,int tag,int dim[],int numdim,int cur,
 {
   cell dsize,totalsize;
   int idx,abortparse;
+  char disable = FALSE;
 
   assert(cur>=0 && cur<numdim);
   assert(startlit>=0);
@@ -2264,6 +2333,13 @@ static cell initarray(int ident,int tag,int dim[],int numdim,int cur,
     totalsize+=dsize;
     if (*errorfound || !matchtoken(','))
       abortparse=TRUE;
+    disable = sLiteralQueueDisabled;
+    sLiteralQueueDisabled = TRUE;
+    if (matchtoken('}')) {
+      abortparse = TRUE;
+      lexpush();
+    }
+    sLiteralQueueDisabled = disable;
   } /* for */
   needtoken('}');
   assert(counteddim!=NULL);
@@ -2736,14 +2812,26 @@ SC_FUNC symbol *fetchfunc(char *name,int tag)
     sym=addsym(name,code_idx,iFUNCTN,sGLOBAL,tag,0);
     assert(sym!=NULL);          /* fatal error 103 must be given on error */
     /* assume no arguments */
-    sym->dim.arglist=(arginfo*)malloc(1*sizeof(arginfo));
-    sym->dim.arglist[0].ident=0;
+    sym->dim.arglist=(arginfo*)calloc(1, sizeof(arginfo));
     /* set library ID to NULL (only for native functions) */
     sym->x.lib=NULL;
     /* set the required stack size to zero (only for non-native functions) */
     sym->x.stacksize=1;         /* 1 for PROC opcode */
   } /* if */
-
+  if (pc_deprecate!=NULL) {
+    assert(sym!=NULL);
+    sym->flags |= flgDEPRECATED;
+    if (sc_status==statWRITE) {
+      if (sym->documentation!=NULL) {
+        free(sym->documentation);
+        sym->documentation=NULL;
+      } /* if */
+      sym->documentation=pc_deprecate;
+    } else {
+      free(pc_deprecate);
+    } /* if */
+    pc_deprecate=NULL;
+  }/* if */
   return sym;
 }
 
@@ -2889,8 +2977,10 @@ static int operatoradjust(int opertok,symbol *sym,char *opername,int resulttag)
         refer_symbol(sym,oldsym->refer[i]);
     delete_symbol(&glbtab,oldsym);
   } /* if */
+  RemoveFromHashTable(sp_Globals, sym);
   strcpy(sym->name,tmpname);
-  sym->hash=namehash(sym->name);/* calculate new hash */
+  sym->hash=NameHash(sym->name);/* calculate new hash */  
+  AddToHashTable(sp_Globals, sym);
 
   /* operators should return a value, except the '~' operator */
   if (opertok!='~')
@@ -3030,7 +3120,7 @@ static void funcstub(int native)
   litidx=0;                     /* clear the literal pool */
   assert(loctab.next==NULL);    /* local symbol table should be empty */
 
-  tag=pc_addtag(NULL);			/* get the tag of the return value */
+  tag=pc_addtag(NULL);          /* get the tag of the return value */
   numdim=0;
   while (matchtoken('[')) {
     /* the function returns an array, get this tag for the index and the array
@@ -3215,7 +3305,7 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
   if ((sym->usage & (uPROTOTYPED | uREAD))==uREAD && sym->tag!=0) {
     int curstatus=sc_status;
     sc_status=statWRITE;  /* temporarily set status to WRITE, so the warning isn't blocked */
-    //error(208);		  //this is silly, it should be caught the first pass
+    //error(208);         //this is silly, it should be caught the first pass
     sc_status=curstatus;
     sc_reparse=TRUE;      /* must add another pass to "initial scan" phase */
   } /* if */
@@ -3246,6 +3336,10 @@ static int newfunc(char *firstname,int firsttag,int fpublic,int fstatic,int stoc
     sc_status=statSKIP;
     cidx=code_idx;
     glbdecl=glb_declared;
+  } /* if */
+  if ((sym->flags & flgDEPRECATED) != 0 && (sym->usage & uSTOCK) == 0) {
+    char *ptr = (sym->documentation != NULL) ? sym->documentation : "";
+    error(233, symbolname, ptr);  /* deprecated (probably a public function) */
   } /* if */
   begcseg();
   sym->usage|=uDEFINE;  /* set the definition flag */
@@ -3562,7 +3656,7 @@ static int declargs(symbol *sym)
   } /* for */
 
   sym->usage|=uPROTOTYPED;
-  errorset(sRESET);             /* reset error flag (clear the "panic mode")*/
+  errorset(sRESET,0);             /* reset error flag (clear the "panic mode")*/
   return argcnt;
 }
 
@@ -4162,104 +4256,6 @@ static void reduce_referrers(symbol *root)
   } while (restart>0);
 }
 
-#if !defined SC_LIGHT
-static long max_stacksize_recurse(symbol *sym,long basesize,int *pubfuncparams)
-{
-  long size,maxsize;
-  int i;
-
-  assert(sym!=NULL);
-  assert(sym->ident==iFUNCTN);
-  assert((sym->usage & uNATIVE)==0);
-  /* recursion detection */
-  if (sym->compound==0)
-    return -1;          /* this function was processed already -> recursion */
-  sym->compound=0;
-
-  maxsize=sym->x.stacksize;
-  for (i=0; i<sym->numrefers; i++) {
-    if (sym->refer[i]!=NULL) {
-      assert(sym->refer[i]->ident==iFUNCTN);
-      assert((sym->refer[i]->usage & uNATIVE)==0); /* a native function cannot refer to a user-function */
-      size=max_stacksize_recurse(sym->refer[i],sym->x.stacksize,pubfuncparams);
-      if (size<0)
-        return size;    /* recursion was detected, quit */
-      if (maxsize<size)
-        maxsize=size;
-    } /* if */
-  } /* for */
-
-  if ((sym->usage & uPUBLIC)!=0) {
-    /* Find out how many parameters a public function has, then see if this
-     * is bigger than some maximum
-     */
-    arginfo *arg=sym->dim.arglist;
-    int count=0;
-    assert(arg!=0);
-    while (arg->ident!=0) {
-      count++;
-      arg++;
-    } /* while */
-    assert(pubfuncparams!=0);
-    if (count>*pubfuncparams)
-      *pubfuncparams=count;
-  } /* if */
-
-  return maxsize+basesize;
-}
-
-static long max_stacksize(symbol *root)
-{
-  /* Loop over all non-native functions. For each function, loop
-   * over all of its referrers, accumulating the stack requirements.
-   * Detect (indirect) recursion with a "mark-and-sweep" algorithm.
-   * I (mis-)use the "compound" field of the symbol structure for
-   * the marker, as this field is unused for functions.
-   *
-   * Note that the stack is shared with the heap. A host application
-   * may "eat" cells from the heap as well, through amx_Allot(). The
-   * stack requirements are thus only an estimate.
-   */
-  long size,maxsize;
-  int maxparams;
-  symbol *sym;
-
-  #if !defined NDEBUG
-    for (sym=root->next; sym!=NULL; sym=sym->next)
-      if (sym->ident==iFUNCTN)
-        assert(sym->compound==0);
-  #endif
-
-  maxsize=0;
-  maxparams=0;
-  for (sym=root->next; sym!=NULL; sym=sym->next) {
-    symbol *tmpsym;
-    /* drop out if this is not a user-implemented function */
-    if (sym->ident!=iFUNCTN || (sym->usage & uNATIVE)!=0)
-      continue;
-    /* set a "mark" on all functions */
-    for (tmpsym=root->next; tmpsym!=NULL; tmpsym=tmpsym->next)
-      if (tmpsym->ident==iFUNCTN)
-        tmpsym->compound=1;
-    /* accumulate stack size for this symbol */
-    size=max_stacksize_recurse(sym,0L,&maxparams);
-    if (size<0)
-      return size;      /* recursion was detected */
-    if (maxsize<size)
-      maxsize=size;
-  } /* for */
-
-  /* clear all marks */
-  for (sym=root->next; sym!=NULL; sym=sym->next)
-    if (sym->ident==iFUNCTN)
-      sym->compound=0;
-
-  maxsize++;                  /* +1 because a zero cell is always pushed on top
-                               * of the stack to catch stack overwrites */
-  return maxsize+(maxparams+1);/* +1 because # of parameters is always pushed on entry */
-}
-#endif
-
 /*  testsymbols - test for unused local or global variables
  *
  *  "Public" functions are excluded from the check, since these
@@ -4279,21 +4275,27 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
   int entry=FALSE;
 
   symbol *sym=root->next;
-  while (sym!=NULL && sym->compound>=level) {
+  while (sym != NULL && get_actual_compound(sym) >= level) {
     switch (sym->ident) {
     case iLABEL:
       if (testlabs) {
-        if ((sym->usage & uDEFINE)==0)
+        if ((sym->usage & uDEFINE)==0) {
           error(19,sym->name);            /* not a label: ... */
-        else if ((sym->usage & uREAD)==0)
+        } else if ((sym->usage & uREAD)==0) {
+          errorset(sSETFILE,sym->fnumber);
+          errorset(sSETLINE,sym->lnumber);
           error(203,sym->name);           /* symbol isn't used: ... */
+        } /* if */
       } /* if */
       break;
     case iFUNCTN:
       if ((sym->usage & (uDEFINE | uREAD | uNATIVE | uSTOCK))==uDEFINE) {
         funcdisplayname(symname,sym->name);
-        if (strlen(symname)>0)
+        if (strlen(symname)>0) {
+          errorset(sSETFILE,sym->fnumber);
+          errorset(sSETLINE,sym->lnumber);
           error(203,symname);       /* symbol isn't used ... (and not native/stock) */
+        } /* if */
       } /* if */
       if ((sym->usage & uPUBLIC)!=0 || strcmp(sym->name,uMAINFUNC)==0)
         entry=TRUE;                 /* there is an entry point */
@@ -4302,21 +4304,31 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
         insert_dbgsymbol(sym);
       break;
     case iCONSTEXPR:
-      if (testconst && (sym->usage & uREAD)==0)
+      if (testconst && (sym->usage & uREAD)==0) {
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(203,sym->name);       /* symbol isn't used: ... */
+      } /* if */
       break;
     default:
       /* a variable */
       if (sym->parent!=NULL)
         break;                      /* hierarchical data type */
-      if ((sym->usage & (uWRITTEN | uREAD | uSTOCK))==0)
-        error(203,sym->name);       /* symbol isn't used (and not stock) */
-      else if ((sym->usage & (uREAD | uSTOCK | uPUBLIC))==0)
+      if ((sym->usage & (uWRITTEN | uREAD | uSTOCK))==0) {
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
+        error(203,sym->name,sym->lnumber);       /* symbol isn't used (and not stock) */
+      } else if ((sym->usage & (uREAD | uSTOCK | uPUBLIC))==0) {
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(204,sym->name);       /* value assigned to symbol is never used */
 #if 0 // ??? not sure whether it is a good idea to force people use "const"
-      else if ((sym->usage & (uWRITTEN | uPUBLIC | uCONST))==0 && sym->ident==iREFARRAY)
+      } else if ((sym->usage & (uWRITTEN | uPUBLIC | uCONST))==0 && sym->ident==iREFARRAY) {
+        errorset(sSETFILE,sym->fnumber);
+        errorset(sSETLINE,sym->lnumber);
         error(214,sym->name);       /* make array argument "const" */
 #endif
+      } /* if */
       /* also mark the variable (local or global) to the debug information */
       if ((sym->usage & (uWRITTEN | uREAD))!=0 && (sym->usage & uNATIVE)==0)
         insert_dbgsymbol(sym);
@@ -4324,6 +4336,8 @@ static int testsymbols(symbol *root,int level,int testlabs,int testconst)
     sym=sym->next;
   } /* while */
 
+  errorset(sEXPRRELEASE, 0); /* clear error data */
+  errorset(sRESET, 0);
   return entry;
 }
 
@@ -4410,7 +4424,7 @@ static constvalue *insert_constval(constvalue *prev,constvalue *next,const char 
     error(103);       /* insufficient memory (fatal error) */
   memset(cur,0,sizeof(constvalue));
   if (name!=NULL) {
-    assert(strlen(name)<sNAMEMAX);
+    assert(strlen(name)<=sNAMEMAX);
     strcpy(cur->name,name);
   } /* if */
   cur->value=val;
@@ -4534,7 +4548,7 @@ static void statement(int *lastindent,int allow_decl)
     error(36);                  /* empty statement */
     return;
   } /* if */
-  errorset(sRESET);
+  errorset(sRESET,0);
 
   tok=lex(&val,&st);
   if (tok!='{') {
@@ -4570,16 +4584,19 @@ static void statement(int *lastindent,int allow_decl)
     break;
   case '{':
     tok=fline;
-    if (!matchtoken('}'))       /* {} is the empty statement */
+    if (!matchtoken('}')) {       /* {} is the empty statement */
       compound(tok==fline);
-    /* lastst (for "last statement") does not change */
+    } else {
+      lastst = tEMPTYBLOCK;
+      }
+    /* lastst (for "last statement") does not change 
+       you're not my father, don't tell me what to do */
     break;
   case ';':
     error(36);                  /* empty statement */
     break;
   case tIF:
-    doif();
-    lastst=tIF;
+    lastst=doif();
     break;
   case tWHILE:
     dowhile();
@@ -4658,6 +4675,7 @@ static void compound(int stmt_sameline)
   int indent=-1;
   cell save_decl=declared;
   int count_stmt=0;
+  int block_start=fline;  /* save line where the compound block started */
 
   /* if there is more text on this line, we should adjust the statement indent */
   if (stmt_sameline) {
@@ -4685,7 +4703,7 @@ static void compound(int stmt_sameline)
   nestlevel+=1;                 /* increase compound statement level */
   while (matchtoken('}')==0){   /* repeat until compound statement is closed */
     if (!freading){
-      needtoken('}');           /* gives error: "expected token }" */
+      error(30,block_start);    /* compound block not closed at end of file */
       break;
     } else {
       if (count_stmt>0 && (lastst==tRETURN || lastst==tBREAK || lastst==tCONTINUE))
@@ -4723,7 +4741,7 @@ static int doexpr(int comma,int chkeffect,int allowarray,int mark_endexpr,
     assert(stgidx==0);
   } /* if */
   index=stgidx;
-  errorset(sEXPRMARK);
+  errorset(sEXPRMARK,0);
   do {
     /* on second round through, mark the end of the previous expression */
     if (index!=stgidx)
@@ -4738,7 +4756,7 @@ static int doexpr(int comma,int chkeffect,int allowarray,int mark_endexpr,
   } while (comma && matchtoken(',')); /* more? */
   if (mark_endexpr)
     markexpr(sEXPR,NULL,0);     /* optionally, mark the end of the expression */
-  errorset(sEXPRRELEASE);
+  errorset(sEXPRRELEASE,0);
   if (localstaging) {
     stgout(index);
     stgset(FALSE);              /* stop staging */
@@ -4755,7 +4773,7 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr)
 
   stgset(TRUE);         /* start stage-buffering */
   stgget(&index,&cidx); /* mark position in code generator */
-  errorset(sEXPRMARK);
+  errorset(sEXPRMARK,0);
   ident=expression(val,tag,symptr,FALSE);
   stgdel(index,cidx);   /* scratch generated code */
   stgset(FALSE);        /* stop stage-buffering */
@@ -4768,7 +4786,7 @@ SC_FUNC int constexpr(cell *val,int *tag,symbol **symptr)
     if (symptr!=NULL)
       *symptr=NULL;
   } /* if */
-  errorset(sEXPRRELEASE);
+  errorset(sEXPRRELEASE,0);
   return (ident==iCONSTEXPR);
 }
 
@@ -4849,10 +4867,11 @@ static void test(int label,int parens,int invert)
   } /* if */
 }
 
-static void doif(void)
+static int doif(void)
 {
   int flab1,flab2;
   int ifindent;
+  int lastst_true;
 
   ifindent=stmtindent;          /* save the indent of the "if" instruction */
   flab1=getlabel();             /* get label number for false branch */
@@ -4861,6 +4880,7 @@ static void doif(void)
   if (matchtoken(tELSE)==0){    /* if...else ? */
     setlabel(flab1);            /* no, simple if..., print false label */
   } else {
+    lastst_true=lastst;
     /* to avoid the "dangling else" error, we want a warning if the "else"
      * has a lower indent than the matching "if" */
     if (stmtindent<ifindent && sc_tabsize>0)
@@ -4871,7 +4891,14 @@ static void doif(void)
     setlabel(flab1);            /* print false label */
     statement(NULL,FALSE);      /* do "else" clause */
     setlabel(flab2);            /* print true label */
+    /* if both the "true" branch and the "false" branch ended with the same
+     * kind of statement, set the last statement id to that kind, rather than
+     * to the generic tIF; this allows for better "unreachable code" checking
+     */
+    if (lastst == lastst_true)
+      return lastst;
   } /* endif */
+  return tIF;
 }
 
 static void dowhile(void)
@@ -5249,6 +5276,11 @@ static void doreturn(void)
       error(78);                        /* mix "return;" and "return value;" */
     ident=doexpr(TRUE,FALSE,TRUE,TRUE,&tag,&sym,TRUE);
     needtoken(tTERM);
+    if (ident == iARRAY && sym == NULL) {
+      /* returning a literal string is not supported (it must be a variable) */
+      error(39);
+      ident = iCONSTEXPR;                 /* avoid handling an "array" case */
+    } /* if */
     /* see if this function already has a sub type (an array attached) */
     sub=finddepend(curfunc);
     assert(sub==NULL || sub->ident==iREFARRAY);
@@ -5447,6 +5479,7 @@ static void dostate(void)
     pc_docexpr=TRUE;            /* attach expression as a documentation string */
     test(flabel,FALSE,FALSE);   /* get expression, branch to flabel if false */
     pc_docexpr=FALSE;
+    pc_deprecate=NULL;
     needtoken(')');
   } else {
     flabel=-1;
@@ -5594,4 +5627,3 @@ static int *readwhile(void)
     return (wqptr-wqSIZE);
   } /* if */
 }
-

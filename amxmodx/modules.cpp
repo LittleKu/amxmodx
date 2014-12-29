@@ -1,33 +1,11 @@
-/* AMX Mod X
-*
-* by the AMX Mod X Development Team
-*  originally developed by OLO
-*
-*
-*  This program is free software; you can redistribute it and/or modify it
-*  under the terms of the GNU General Public License as published by the
-*  Free Software Foundation; either version 2 of the License, or (at
-*  your option) any later version.
-*
-*  This program is distributed in the hope that it will be useful, but
-*  WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-*  General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with this program; if not, write to the Free Software Foundation, 
-*  Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*
-*  In addition, as a special exception, the author gives permission to
-*  link the code of this program with the Half-Life Game Engine ("HL
-*  Engine") and Modified Game Libraries ("MODs") developed by Valve, 
-*  L.L.C ("Valve"). You must obey the GNU General Public License in all
-*  respects for all of the code used other than the HL Engine and MODs
-*  from Valve. If you modify this file, you may extend this exception
-*  to your version of the file, but you are not obligated to do so. If
-*  you do not wish to do so, delete this exception statement from your
-*  version.
-*/
+// vim: set ts=4 sw=4 tw=99 noet:
+//
+// AMX Mod X, based on AMX Mod by Aleksander Naszko ("OLO").
+// Copyright (C) The AMX Mod X Development Team.
+//
+// This software is licensed under the GNU General Public License, version 3 or higher.
+// Additional exceptions apply. For full license details, see LICENSE.txt or visit:
+//     https://alliedmods.net/amxmodx-license
 
 #if defined(__linux__) || defined(__APPLE__)
 #if defined(__linux__)
@@ -51,7 +29,6 @@
 #include "binlog.h"
 #include "libraries.h"
 #include "messages.h"
-#include "amxmod_compat.h"
 #include "trie_natives.h"
 #include "CDataPack.h"
 
@@ -171,7 +148,6 @@ int load_amxscript(AMX *amx, void **program, const char *filename, char error[64
 	*error = 0;
 	size_t bufSize;
 	*program = (void *)g_plugins.ReadIntoOrFromCache(filename, bufSize);
-	bool oldfile = false;
 	if (!*program)
 	{
 		CAmxxReader reader(filename, PAWN_CELL_SIZE / 8);
@@ -225,8 +201,6 @@ int load_amxscript(AMX *amx, void **program, const char *filename, char error[64
 				strcpy(error, "Unknown error");
 				return (amx->error = AMX_ERR_NOTFOUND);
 		}
-
-		oldfile = reader.IsOldFile();
 	} else {
 		g_plugins.InvalidateFileInCache(filename, false);
 	}
@@ -380,17 +354,6 @@ int load_amxscript(AMX *amx, void **program, const char *filename, char error[64
 		}
 	}
 #endif
-
-	if (oldfile)
-	{
-		amx->flags |= AMX_FLAG_OLDFILE;
-	} else {
-		cell addr;
-		if (amx_FindPubVar(amx, "__b_old_plugin", &addr) == AMX_ERR_NONE)
-		{
-			amx->flags |= AMX_FLAG_OLDFILE;
-		}
-	}
 
 	CScript* aa = new CScript(amx, *program, filename);
 
@@ -568,8 +531,7 @@ int set_amxnatives(AMX* amx, char error[128])
 
 		for (size_t i = 0; i < cm->m_NewNatives.size(); i++)
 		{
-			if (!(amx->flags & AMX_FLAG_OLDFILE))
-				amx_Register(amx, cm->m_NewNatives[i], -1);
+			amx_Register(amx, cm->m_NewNatives[i], -1);
 		}
 	}
 
@@ -589,11 +551,8 @@ int set_amxnatives(AMX* amx, char error[128])
 	amx_Register(amx, g_DataStructNatives, -1);
 	amx_Register(amx, trie_Natives, -1);
 	amx_Register(amx, g_DatapackNatives, -1);
-	
-	if (amx->flags & AMX_FLAG_OLDFILE)
-	{
-		amx_Register(amx, g_BcompatNatives, -1);
-	}
+	amx_Register(amx, g_StackNatives, -1);
+	amx_Register(amx, g_TextParserNatives, -1);
 
 	//we're not actually gonna check these here anymore
 	amx->flags |= AMX_FLAG_PRENIT;
@@ -732,7 +691,7 @@ char* build_pathname(const char *fmt, ...)
 {
 	static char string[256];
 	int b;
-	int a = b = snprintf(string, 255, "%s%c", g_mod_name.c_str(), PATH_SEP_CHAR);
+	int a = b = UTIL_Format(string, 255, "%s%c", g_mod_name.c_str(), PATH_SEP_CHAR);
 
 	va_list argptr;
 	va_start(argptr, fmt);
@@ -756,7 +715,7 @@ char* build_pathname(const char *fmt, ...)
 
 char *build_pathname_r(char *buffer, size_t maxlen, const char *fmt, ...)
 {
-	snprintf(buffer, maxlen, "%s%c", g_mod_name.c_str(), PATH_SEP_CHAR);
+	UTIL_Format(buffer, maxlen, "%s%c", g_mod_name.c_str(), PATH_SEP_CHAR);
 
 	size_t len = strlen(buffer);
 	char *ptr = buffer + len;
@@ -1000,7 +959,7 @@ bool LoadModule(const char *shortname, PLUG_LOADTIME now, bool simplify, bool no
 		switch (cc->getStatusValue())
 		{
 		case MODULE_FUNCNOTPRESENT:
-			report_error(1, "[AMXX] Module requested a not exisitng function (file \"%s\")%s%s%s", cc->getFilename(), cc->getMissingFunc() ? " (func \"" : "", 
+			report_error(1, "[AMXX] Module requested a not existing function (file \"%s\")%s%s%s", cc->getFilename(), cc->getMissingFunc() ? " (func \"" : "", 
 				cc->getMissingFunc() ? cc->getMissingFunc() : "", cc->getMissingFunc() ? "\")" : "");
 			break;
 		case MODULE_INTERROR:
@@ -1888,6 +1847,8 @@ void Module_CacheFunctions()
 
 	// String / mem in amx scripts support
 	REGISTER_FUNC("SetAmxString", set_amxstring)
+	REGISTER_FUNC("SetAmxStringUTF8Char", set_amxstring_utf8_char)
+	REGISTER_FUNC("SetAmxStringUTF8Cell", set_amxstring_utf8_cell)
 	REGISTER_FUNC("GetAmxString", MNF_GetAmxString)
 	REGISTER_FUNC("GetAmxStringLen", MNF_GetAmxStringLen)
 	REGISTER_FUNC("FormatAmxString", MNF_FormatAmxString)
